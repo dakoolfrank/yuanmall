@@ -1,0 +1,19 @@
+{
+    "folders": [
+        {
+            "name": "ruoyi-vue-pro",
+            "path": "ruoyi-vue-pro"
+        },
+        {
+            "name": "yudao-ui-admin-vue3",
+            "path": "yudao-ui-admin-vue3"
+        },
+        {
+            "name": "yudao-mall-uniapp",
+            "path": "yudao-mall-uniapp"
+        }
+    ],
+    "settings": {
+        "git.openRepositoryInParentFolders": "always"
+    }
+}

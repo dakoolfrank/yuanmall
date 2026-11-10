@@ -1,0 +1,5 @@
+# Local files for the aggregate repository. Each project keeps its own ignore rules.
+.DS_Store
+Thumbs.db
+/_local/
+/ruoyi-vue-pro/sql/local/

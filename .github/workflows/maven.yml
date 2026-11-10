@@ -1,0 +1,38 @@
+name: Backend Maven build
+
+on:
+  push:
+    branches: [ master, master-jdk17, master-jdk25 ]
+    paths:
+      - 'ruoyi-vue-pro/**'
+      - '.github/workflows/maven.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ruoyi-vue-pro
+    steps:
+      - uses: actions/checkout@v7
+      - name: Resolve JDK version
+        id: jdk
+        run: |
+          python3 -I - <<'EOF' >> "$GITHUB_OUTPUT"
+          import xml.etree.ElementTree as ET
+          ns = {'m': 'http://maven.apache.org/POM/4.0.0'}
+          v = (ET.parse('pom.xml').getroot().findtext('m:properties/m:java.version', namespaces=ns) or '').strip().removeprefix('1.')
+          if not v.isdigit():
+              raise SystemExit('Missing or invalid properties/java.version in backend pom.xml')
+          print(f'version={v}')
+          EOF
+      - name: Set up JDK ${{ steps.jdk.outputs.version }}
+        uses: actions/setup-java@v6
+        with:
+          java-version: ${{ steps.jdk.outputs.version }}
+          distribution: temurin
+          cache: maven
+          cache-dependency-path: 'ruoyi-vue-pro/**/pom.xml'
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml -Dmaven.test.skip=true
