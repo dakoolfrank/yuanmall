@@ -2,7 +2,7 @@ name: Backend Maven build
 
 on:
   push:
-    branches: [ master, master-jdk17, master-jdk25 ]
+    branches: [ main, master-jdk17, master-jdk25 ]
     paths:
       - 'ruoyi-vue-pro/**'
       - '.github/workflows/maven.yml'
