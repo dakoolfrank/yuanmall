@@ -13,7 +13,7 @@ yuanmall/
 
 ## 打开工作区
 
-用 VS Code 打开根目录的 `yuanmall.code-workspace`。工作区名是 **yuanmall**，资源管理器直接显示三个并列项目，没有额外的 `yuanmall` 文件夹层级。
+用 VS Code 打开仓库外保存的 `yuanmall.code-workspace`。工作区名是 **yuanmall**，资源管理器直接显示三个并列项目，没有额外的 `yuanmall` 文件夹层级。
 
 本机现有的 `D:\SouceFile\yuanmall.code-workspace` 也指向这三个项目。
 
