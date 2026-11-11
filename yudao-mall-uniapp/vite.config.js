@@ -7,7 +7,7 @@ import mpliveMainfestPlugin from './sheep/libs/mplive-manifest-plugin';
 
 
 // https://vitejs.dev/config/
-export default (command, mode) => {
+export default ({ mode }) => {
 	const env = loadEnv(mode, __dirname, 'SHOPRO_');
 	return {
 		envPrefix: "SHOPRO_",
@@ -23,7 +23,8 @@ export default (command, mode) => {
 			mpliveMainfestPlugin(env.SHOPRO_MPLIVE_ON)
 		],
 		server: {
-			host: true,
+			host: '127.0.0.1',
+			strictPort: true,
 			// open: true,
 			port: env.SHOPRO_DEV_PORT,
 			hmr: {

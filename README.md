@@ -17,6 +17,38 @@ yuanmall/
 
 本机现有的 `D:\SouceFile\yuanmall.code-workspace` 也指向这三个项目。
 
+## 本地运行
+
+本机使用 Docker Desktop 的 Linux 容器运行 MySQL、Redis 和 Java 后端，Java 8 和 Maven 构建工具也在容器内。前端使用本机 Node.js、pnpm；准备脚本使用 Python 3。
+
+在总仓库根目录执行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-local.ps1
+```
+
+修改后端代码后，使用 `-Rebuild` 重新打包并重建后端容器；只启动后端环境可加 `-NoFrontends`。
+
+| 服务 | 本机地址 |
+| --- | --- |
+| 管理后台 | http://127.0.0.1:5173 |
+| 用户商城 H5 | http://127.0.0.1:5300 |
+| 后端 API | http://127.0.0.1:48080 |
+| MySQL | `127.0.0.1:13306`，数据库和应用用户名均为 `yuanmall` |
+| Redis | `127.0.0.1:16379` |
+
+本地演示账号：后台 `admin / admin123`，商城密码登录 `19900000001 / admin123`。商城账号复用初始化时后台管理员的密码。
+
+数据库、Redis 密码自动生成并保存在被 Git 忽略的 `_local/.env`；日志和上传文件也保存在 `_local/`。支付使用模拟通道，文件使用本机存储，真实短信渠道关闭，定时任务暂不自动运行。
+
+初始化使用基础库、Quartz、会员、支付、商城的 SQL。三份业务 SQL 及解压、修订副本均在 `ruoyi-vue-pro/sql/local/`，不随公开仓库分发；在新机器上启动前需要先准备好 `extracted/member.sql`、`extracted/pay.local.sql`、`extracted/mall.sql`。本机已准备好这些文件，支付导入副本省略了损坏的示例渠道配置。
+
+停止本地服务并保留数据库：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\stop-local.ps1
+```
+
 ## 上游对应关系
 
 | 项目目录 | 上游仓库 | Git remote | 分支 |

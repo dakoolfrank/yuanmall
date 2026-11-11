@@ -5,6 +5,8 @@
   "version": "2026.10",
   "description": "芋道商城，一套代码，同时发行到iOS、Android、H5、微信小程序多个平台，请使用手机扫码快速体验强大功能",
   "scripts": {
+    "dev:h5": "node scripts/uni-cli.cjs -p h5 --host 127.0.0.1 --port 5300",
+    "build:h5": "node scripts/uni-cli.cjs build -p h5",
     "prettier": "prettier --write  \"{pages,sheep}/**/*.{js,json,tsx,css,less,scss,vue,html,md}\""
   },
   "repository": "https://github.com/sheepjs/shop.git",
@@ -88,6 +90,11 @@
     }
   },
   "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-5030420261029002",
+    "@dcloudio/uni-components": "3.0.0-5030420261029002",
+    "@dcloudio/uni-h5": "3.0.0-5030420261029002",
+    "@dcloudio/uni-mp-weixin": "3.0.0-5030420261029002",
+    "vue-i18n": "^9.1.9",
     "dayjs": "^1.11.7",
     "lodash": "^4.17.21",
     "lodash-es": "^4.17.21",
@@ -98,6 +105,13 @@
     "weixin-js-sdk": "^1.6.0"
   },
   "devDependencies": {
+    "@dcloudio/types": "^3.4.8",
+    "@dcloudio/uni-cli-shared": "3.0.0-5030420261029002",
+    "@dcloudio/uni-stacktracey": "3.0.0-5030420261029002",
+    "@dcloudio/vite-plugin-uni": "3.0.0-5030420261029002",
+    "vite": "5.2.8",
+    "rollup": "4.14.3",
+    "sass": "1.57.1",
     "prettier": "^2.8.7",
     "vconsole": "^3.15.0"
   }
