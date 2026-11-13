@@ -6,7 +6,7 @@
   "private": false,
   "scripts": {
     "i": "pnpm install",
-    "dev": "vite --mode env.local",
+    "dev": "vite --mode env.local --host 127.0.0.1 --port 5300 --strictPort",
     "dev-server": "vite --mode dev",
     "ts:check": "node --max_old_space_size=8192 ./node_modules/vue-tsc/bin/vue-tsc.js --noEmit --incremental --tsBuildInfoFile node_modules/.cache/vue-tsc/tsconfig.tsbuildinfo",
     "build:local": "node --max_old_space_size=8192 ./node_modules/vite/bin/vite.js build --mode env.local",
@@ -14,6 +14,7 @@
     "build:test": "node --max_old_space_size=8192 ./node_modules/vite/bin/vite.js build --mode test",
     "build:stage": "node --max_old_space_size=8192 ./node_modules/vite/bin/vite.js build --mode stage",
     "build:prod": "node --max_old_space_size=8192 ./node_modules/vite/bin/vite.js build --mode prod",
+    "build:mall": "node scripts/build-mall.cjs",
     "serve:dev": "vite preview --mode dev",
     "serve:prod": "vite preview --mode prod",
     "preview": "pnpm build:local && vite preview",

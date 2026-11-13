@@ -16,7 +16,7 @@ function Test-LocalPort {
 }
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $previousEnvironment = @{}
-foreach ($name in @('VITE_OPEN', 'VITE_BASE_URL', 'UNI_INPUT_DIR', 'UNI_OUTPUT_DIR')) {
+foreach ($name in @('VITE_OPEN', 'VITE_BASE_URL')) {
     $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
 }
 Push-Location $repoRoot
@@ -48,37 +48,37 @@ try {
         $env:VITE_OPEN = 'false'
         $env:VITE_BASE_URL = 'http://127.0.0.1:48080'
         $adminRoot = Join-Path $repoRoot 'yudao-ui-admin-vue3'
-        $mallRoot = Join-Path $repoRoot 'yudao-mall-uniapp'
         $logs = Join-Path $repoRoot '_local/logs'
         $processes = @()
-        if (-not (Test-LocalPort -Port 5173)) {
+        $adminRunning = Test-LocalPort -Port 5300
+        if ($adminRunning) {
+            try {
+                $page = Invoke-WebRequest -Uri 'http://127.0.0.1:5300/' -UseBasicParsing -TimeoutSec 5
+                $adminRunning = $page.Content.Contains('/src/main.ts')
+            } catch {
+                $adminRunning = $false
+            }
+            if (-not $adminRunning) { throw 'Port 5300 is occupied by another service; stop it before starting the admin frontend.' }
+        }
+        if (-not $adminRunning) {
             if (-not (Test-Path (Join-Path $adminRoot 'node_modules/.modules.yaml'))) {
                 Push-Location $adminRoot
                 try { pnpm install --frozen-lockfile; if ($LASTEXITCODE -ne 0) { throw 'Admin dependencies failed.' } } finally { Pop-Location }
             }
-            $arguments = @('node_modules/vite/bin/vite.js', '--mode', 'env.local', '--host', '127.0.0.1', '--port', '5173', '--strictPort')
+            $arguments = @('node_modules/vite/bin/vite.js', '--mode', 'env.local', '--host', '127.0.0.1', '--port', '5300', '--strictPort')
             $processes += Start-Process -FilePath $node -ArgumentList $arguments -WorkingDirectory $adminRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $logs 'admin.stdout.log') -RedirectStandardError (Join-Path $logs 'admin.stderr.log') -PassThru
-        }
-        if (-not (Test-LocalPort -Port 5300)) {
-            if (-not (Test-Path (Join-Path $mallRoot 'node_modules/.modules.yaml'))) {
-                Push-Location $mallRoot
-                try { pnpm install; if ($LASTEXITCODE -ne 0) { throw 'Mall dependencies failed.' } } finally { Pop-Location }
-            }
-            $env:UNI_INPUT_DIR = $mallRoot
-            $env:UNI_OUTPUT_DIR = Join-Path $mallRoot 'unpackage/dev/h5'
-            $processes += Start-Process -FilePath $node -ArgumentList @('node_modules/@dcloudio/vite-plugin-uni/bin/uni.js', '-p', 'h5', '--host', '127.0.0.1', '--port', '5300') -WorkingDirectory $mallRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $logs 'mall.stdout.log') -RedirectStandardError (Join-Path $logs 'mall.stderr.log') -PassThru
         }
         if ($processes.Count -gt 0) {
             $existingProcesses = @()
             if (Test-Path '_local/frontend-processes.json') {
-                $existingProcesses = @(Get-Content '_local/frontend-processes.json' -Raw -Encoding UTF8 | ConvertFrom-Json)
+                $existingProcesses = @(Get-Content '_local/frontend-processes.json' -Raw -Encoding UTF8 | ConvertFrom-Json | Where-Object { $_.Id -and $_.StartTime })
             }
             $newProcesses = @($processes | ForEach-Object { [pscustomobject]@{Id=$_.Id;ProcessName=$_.ProcessName;StartTime=$_.StartTime.ToUniversalTime().ToString('o')} })
             @($existingProcesses + $newProcesses) | ConvertTo-Json | Set-Content -LiteralPath '_local/frontend-processes.json' -Encoding UTF8
         }
     }
-    Write-Host 'Admin: http://127.0.0.1:5173'
-    Write-Host 'Mall:  http://127.0.0.1:5300'
+    Write-Host 'Admin: http://127.0.0.1:5300'
+    Write-Host 'WeChat development: pnpm --dir yudao-mall-uniapp dev:mp-weixin'
     Write-Host 'API:   http://127.0.0.1:48080'
 } finally {
     foreach ($name in $previousEnvironment.Keys) {

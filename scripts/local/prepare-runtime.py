@@ -14,9 +14,6 @@ for name in ('logs', 'uploads'):
 admin_env = root / 'yudao-ui-admin-vue3/.env.env.local.local'
 if not admin_env.exists():
     admin_env.write_text('VITE_BASE_URL=http://127.0.0.1:48080\nVITE_OPEN=false\nVITE_APP_CAPTCHA_ENABLE=false\nVITE_APP_API_ENCRYPT_ENABLE=false\n', encoding='utf-8')
-mall_env = root / 'yudao-mall-uniapp/.env.local'
-if not mall_env.exists():
-    mall_env.write_text('SHOPRO_BASE_URL=http://127.0.0.1:48080\nSHOPRO_DEV_BASE_URL=http://127.0.0.1:48080\nSHOPRO_TRIAL_BASE_URL=http://127.0.0.1:48080\nSHOPRO_H5_URL=http://127.0.0.1:5300\nSHOPRO_DEV_PORT=5300\nSHOPRO_TENANT_ID=1\n', encoding='utf-8')
 settings = ET.Element('settings', xmlns='http://maven.apache.org/SETTINGS/1.2.0')
 mirror = ET.SubElement(ET.SubElement(settings, 'mirrors'), 'mirror')
 for key, value in {'id': 'yuanmall-mirror', 'mirrorOf': '*', 'url': 'https://mirrors.huaweicloud.com/repository/maven/'}.items():
