@@ -4,7 +4,7 @@
 - 日期：2026-11-14（北京时间）。
 - 已确认：店主在手机微信小程序中管理商品和订单。
 - 主项目：`yudao-ui-admin-uniapp`，基于[官方移动管理端](https://github.com/yudaocode/yudao-ui-admin-uniapp)。
-- 当前进度：本机已引入源码并准备微信模式配置；本次GitHub清理仅提交设计与来源记录，完整源码保留在本机。首页、导航、表单精简与真实接口联调待实施。
+- 当前进度：完整源码与微信模式配置已纳入总仓库，作为原电脑管理端的替代项目；首页、导航、表单精简与真实接口联调待实施。
 - 关联设计：[客户商城](../../yudao-mall-uniapp/docs/DESIGN_YUANMALL.md)、[Java后端](../../ruoyi-vue-pro/docs/DESIGN_BACKEND.md)。
 
 ## 1. 纠正项目定位
