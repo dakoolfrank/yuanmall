@@ -11,9 +11,6 @@ if not env_path.exists():
     env_path.write_text(''.join(f'{key}={secrets.token_hex(24)}\n' for key in ('MYSQL_ROOT_PASSWORD', 'MYSQL_PASSWORD', 'REDIS_PASSWORD')), encoding='utf-8')
 for name in ('logs', 'uploads'):
     (local / name).mkdir(exist_ok=True)
-admin_env = root / 'yudao-ui-admin-vue3/.env.env.local.local'
-if not admin_env.exists():
-    admin_env.write_text('VITE_BASE_URL=http://127.0.0.1:48080\nVITE_OPEN=false\nVITE_APP_CAPTCHA_ENABLE=false\nVITE_APP_API_ENCRYPT_ENABLE=false\n', encoding='utf-8')
 settings = ET.Element('settings', xmlns='http://maven.apache.org/SETTINGS/1.2.0')
 mirror = ET.SubElement(ET.SubElement(settings, 'mirrors'), 'mirror')
 for key, value in {'id': 'yuanmall-mirror', 'mirrorOf': '*', 'url': 'https://mirrors.huaweicloud.com/repository/maven/'}.items():

@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('all', 'ruoyi-vue-pro', 'yudao-ui-admin-vue3', 'yudao-mall-uniapp')]
+    [ValidateSet('all', 'ruoyi-vue-pro', 'yudao-mall-uniapp')]
     [string]$Project = 'all',
     [switch]$SetupOnly
 )

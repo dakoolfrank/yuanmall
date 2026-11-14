@@ -8,13 +8,6 @@
       "initialCommit": "3e13d8ea901a5368a0d4824e3b55775928bd5760"
     },
     {
-      "path": "yudao-ui-admin-vue3",
-      "remote": "upstream-yudao-ui-admin-vue3",
-      "url": "https://github.com/yudaocode/yudao-ui-admin-vue3.git",
-      "branch": "master",
-      "initialCommit": "20748d425be945c9a8cff7048289d0aa43127cea"
-    },
-    {
       "path": "yudao-mall-uniapp",
       "remote": "upstream-yudao-mall-uniapp",
       "url": "https://github.com/yudaocode/yudao-mall-uniapp.git",

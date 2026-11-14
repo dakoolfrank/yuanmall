@@ -1,90 +1,75 @@
-# yuanmall
+# 园园杂货铺 · yuanmall
 
-商城项目总仓库，包含后端、管理后台和用户商城三套完整源码。使用一个 Git 仓库管理，通过 Git subtree 分别同步各项目的上游。
+自营微信商城，本机工作区包含以下三个项目。当前GitHub保存Java后端与客户商城源码，以及新店主管理端的设计/来源记录；店主管理端完整源码已在本机引入，本次清理先不上传其大体积源码包。
 
-```text
-yuanmall/
-├── ruoyi-vue-pro/          # Java 后端：原 yuanmall 仓库的全部代码
-├── yudao-ui-admin-vue3/    # Vue 3 管理后台
-└── yudao-mall-uniapp/      # uni-app 用户商城
+| 目录 | 用途 |
+| --- | --- |
+| `ruoyi-vue-pro` | Java后端，部署于mall服务器 |
+| `yudao-mall-uniapp` | 客户微信小程序：选购、支付、查看订单 |
+| `yudao-ui-admin-uniapp` | 店主微信小程序：管理商品、订单、发货与售后 |
+
+2026-11-14按用户要求清理本机与本仓库的电脑管理前端、启动/部署工具和上游同步配置。服务器由服务器侧独立维护，本轮不修改其服务或配置。新店主管理端已引入源码和微信配置，尚待构建、真机及业务联调；源码引入不表示已经可以替代全部运营操作。
+
+## 工作区与设计
+
+本机使用 `D:\SouceFile\yuanmall.code-workspace`，包含上述三个项目。源码子目录内不创建独立 `.git`。
+
+- [客户商城设计](yudao-mall-uniapp/docs/DESIGN_YUANMALL.md)
+- [店主管理设计](yudao-ui-admin-uniapp/docs/DESIGN_ADMIN.md)
+- [后端设计](ruoyi-vue-pro/docs/DESIGN_BACKEND.md)
+
+## 日常开发
+
+Java、MySQL和Redis运行在mall服务器。本机使用VS Code、Node.js、pnpm和微信开发者工具，按当前任务启动所需编译监听，不启动H5或电脑管理服务。
+
+```powershell
+# 客户端
+pnpm --dir yudao-mall-uniapp dev:mp-weixin
+# 店主端，需要先配置独立AppID并安装依赖
+pnpm --dir yudao-ui-admin-uniapp dev:mp-weixin
 ```
 
-原后端的提交历史保留在本仓库中。三个项目的源码、配置和许可证分别保留在各自目录内。
+| 项目 | 微信开发产物 | 发布构建产物 |
+| --- | --- | --- |
+| 客户端 | `yudao-mall-uniapp/unpackage/dev/mp-weixin` | `yudao-mall-uniapp/unpackage/build/mp-weixin` |
+| 店主端 | `yudao-ui-admin-uniapp/dist/dev/mp-weixin` | `yudao-ui-admin-uniapp/dist/build/mp-weixin` |
 
-## 打开工作区
+发布构建使用各项目的 `build:mp-weixin`。两个小程序分别使用各自AppID和代码包；上传、审核和正式发布按开发约定单独进行。
 
-用 VS Code 打开仓库外保存的 `yuanmall.code-workspace`。工作区名是 **yuanmall**，资源管理器直接显示三个并列项目，没有额外的 `yuanmall` 文件夹层级。
+## 服务器入口
 
-本机现有的 `D:\SouceFile\yuanmall.code-workspace` 也指向这三个项目。
+- `https://mall.nexrur.ai/`：当前服务器的页面入口，由服务器侧独立维护。
+- `/app-api/`：客户小程序接口与会员认证。
+- `/admin-api/`：店主管理接口与管理员权限。
 
-## 本地运行
+两类API由同一Java服务提供。服务器分时运行dev/prod，同域名的开发工具、体验版和正式版都会随服务器环境切换；数据库与Redis逻辑库分别隔离。服务器操作另行授权，并先读取服务器上的 `AGENTS.md` 和 `DEPLOY.md`。
 
-本机使用 Docker Desktop 的 Linux 容器运行 MySQL、Redis 和 Java 后端，Java 8 和 Maven 构建工具也在容器内。前端使用本机 Node.js、pnpm；准备脚本使用 Python 3。
+## 备用本机Java环境
 
-在总仓库根目录执行：
+仅在明确需要本机Java调试时使用，不作为服务器的环境切换入口：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\start-local.ps1
-```
-
-修改后端代码后，使用 `-Rebuild` 重新打包并重建后端容器；只启动后端环境可加 `-NoFrontends`。
-
-| 服务 | 本机地址 |
-| --- | --- |
-| 管理后台 | http://127.0.0.1:5173 |
-| 用户商城 H5 | http://127.0.0.1:5300 |
-| 后端 API | http://127.0.0.1:48080 |
-| MySQL | `127.0.0.1:13306`，数据库和应用用户名均为 `yuanmall` |
-| Redis | `127.0.0.1:16379` |
-
-本地演示账号：后台 `admin / admin123`，商城密码登录 `19900000001 / admin123`。商城账号复用初始化时后台管理员的密码。
-
-数据库、Redis 密码自动生成并保存在被 Git 忽略的 `_local/.env`；日志和上传文件也保存在 `_local/`。支付使用模拟通道，文件使用本机存储，真实短信渠道关闭，定时任务暂不自动运行。
-
-初始化使用基础库、Quartz、会员、支付、商城的 SQL。三份业务 SQL 及解压、修订副本均在 `ruoyi-vue-pro/sql/local/`，不随公开仓库分发；在新机器上启动前需要先准备好 `extracted/member.sql`、`extracted/pay.local.sql`、`extracted/mall.sql`。本机已准备好这些文件，支付导入副本省略了损坏的示例渠道配置。
-
-停止本地服务并保留数据库：
-
-```powershell
+# 修改Java后需要重建时添加 -Rebuild
 powershell -ExecutionPolicy Bypass -File .\scripts\stop-local.ps1
 ```
 
-## 上游对应关系
+启动脚本只管理Java、MySQL和Redis，保留数据卷，不启动小程序或其他前端。API监听 `127.0.0.1:48080`，MySQL为 `127.0.0.1:13306`，Redis为 `127.0.0.1:16379`。私有凭据、日志与上传文件保存在已忽略的 `_local/`；启动前需要准备 `ruoyi-vue-pro/sql/local/extracted/` 中匹配版本的会员、支付和商城SQL，不随公开仓库分发，不对已有环境重复初始化。
 
-| 项目目录 | 上游仓库 | Git remote | 分支 |
-| --- | --- | --- | --- |
-| `ruoyi-vue-pro` | [YunaiV/ruoyi-vue-pro](https://github.com/YunaiV/ruoyi-vue-pro) | `upstream-ruoyi-vue-pro` | `master` |
-| `yudao-ui-admin-vue3` | [yudaocode/yudao-ui-admin-vue3](https://github.com/yudaocode/yudao-ui-admin-vue3) | `upstream-yudao-ui-admin-vue3` | `master` |
-| `yudao-mall-uniapp` | [yudaocode/yudao-mall-uniapp](https://github.com/yudaocode/yudao-mall-uniapp) | `upstream-yudao-mall-uniapp` | `master` |
+## 上游同步
 
-`origin` 仍是 `https://github.com/dakoolfrank/yuanmall.git`。初次导入版本记录在 `upstreams.json`，后续同步版本记录在 Git subtree 提交中。
+| 项目 | 上游 | 本地remote |
+| --- | --- | --- |
+| Java后端 | [YunaiV/ruoyi-vue-pro](https://github.com/YunaiV/ruoyi-vue-pro) | `upstream-ruoyi-vue-pro` |
+| 客户商城 | [yudaocode/yudao-mall-uniapp](https://github.com/yudaocode/yudao-mall-uniapp) | `upstream-yudao-mall-uniapp` |
+| 店主管理 | [yudaocode/yudao-ui-admin-uniapp](https://github.com/yudaocode/yudao-ui-admin-uniapp) | 当前为固定提交快照，见[来源记录](yudao-ui-admin-uniapp/docs/UPSTREAM_YUANMALL.md) |
 
-### 新克隆后配置上游
-
-普通 `git clone` 就能拿到三套源码。Git remote 配置属于本地设置，新克隆后在总仓库根目录执行一次：
+`origin` 为 `https://github.com/dakoolfrank/yuanmall.git`。现有 `upstreams.json` 和脚本只管理Java与客户商城两个subtree项目：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\sync-upstream.ps1 -SetupOnly
-```
-
-### 同步单个项目
-
-先提交自己的改动，或用 `git stash` 收起改动，然后在总仓库根目录执行：
-
-```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\sync-upstream.ps1 -Project ruoyi-vue-pro
-powershell -ExecutionPolicy Bypass -File .\scripts\sync-upstream.ps1 -Project yudao-ui-admin-vue3
 powershell -ExecutionPolicy Bypass -File .\scripts\sync-upstream.ps1 -Project yudao-mall-uniapp
 ```
 
-每条命令只同步对应的目录，并产生 subtree 合并提交；有冲突时先解决当前合并，再继续同步其它项目。省略 `-Project` 会按顺序同步全部三个项目。
-
-## 开发入口
-
-- 后端：从 `ruoyi-vue-pro/` 打开 Maven 项目；当前分支要求 JDK 8，配置文件在 `ruoyi-vue-pro/yudao-server/src/main/resources/`。
-- 管理后台：在 `yudao-ui-admin-vue3/` 内安装依赖、启动开发服务，命令见该项目的 README 和 `package.json`。
-- 用户商城：用 HBuilderX 打开 `yudao-mall-uniapp/`，按该项目 README 启动 H5 或小程序。
-- Docker 部署说明移至 `ruoyi-vue-pro/script/docker-compose/README.md`，目录内部的相对路径保持有效。
-- 总仓库的 GitHub Actions 已调整为从 `ruoyi-vue-pro/` 打包后端。各上游项目自带的工作流保留在对应项目内。
-
-商城、会员、支付的业务数据库脚本仍需另行准备，导入前需匹配当前代码版本。本机专用文件可放在 `_local/`，本地 SQL 可放在 `ruoyi-vue-pro/sql/local/`，这两个目录均被总仓库忽略。
+同步前提交或妥善保存当前改动。店主管理端尚未登记subtree导入提交，不直接套用自动pull；不要重新添加已移除电脑管理端的连接。

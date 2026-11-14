@@ -2,23 +2,8 @@
 param([switch]$Rebuild, [switch]$NoFrontends)
 
 $ErrorActionPreference = 'Stop'
-function Test-LocalPort {
-    param([int]$Port)
-    $client = New-Object Net.Sockets.TcpClient
-    try {
-        $pending = $client.ConnectAsync('127.0.0.1', $Port)
-        return $pending.Wait(1000) -and $client.Connected
-    } catch {
-        return $false
-    } finally {
-        $client.Dispose()
-    }
-}
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$previousEnvironment = @{}
-foreach ($name in @('VITE_OPEN', 'VITE_BASE_URL')) {
-    $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
-}
+# NoFrontends is retained for compatibility; frontends always run separately.
 Push-Location $repoRoot
 try {
     foreach ($sqlFile in @('member.sql', 'pay.local.sql', 'mall.sql')) {
@@ -36,53 +21,14 @@ try {
     if ($buildRequired) {
         & docker @compose run --rm maven
         if ($LASTEXITCODE -ne 0) { throw 'Backend build failed.' }
-    }
-    if ($buildRequired) {
         & docker @compose up -d --force-recreate backend
     } else {
         & docker @compose up -d backend
     }
     if ($LASTEXITCODE -ne 0) { throw 'Backend startup failed.' }
-    if (-not $NoFrontends) {
-        $node = (Get-Command node -ErrorAction Stop).Source
-        $env:VITE_OPEN = 'false'
-        $env:VITE_BASE_URL = 'http://127.0.0.1:48080'
-        $adminRoot = Join-Path $repoRoot 'yudao-ui-admin-vue3'
-        $logs = Join-Path $repoRoot '_local/logs'
-        $processes = @()
-        $adminRunning = Test-LocalPort -Port 5300
-        if ($adminRunning) {
-            try {
-                $page = Invoke-WebRequest -Uri 'http://127.0.0.1:5300/' -UseBasicParsing -TimeoutSec 5
-                $adminRunning = $page.Content.Contains('/src/main.ts')
-            } catch {
-                $adminRunning = $false
-            }
-            if (-not $adminRunning) { throw 'Port 5300 is occupied by another service; stop it before starting the admin frontend.' }
-        }
-        if (-not $adminRunning) {
-            if (-not (Test-Path (Join-Path $adminRoot 'node_modules/.modules.yaml'))) {
-                Push-Location $adminRoot
-                try { pnpm install --frozen-lockfile; if ($LASTEXITCODE -ne 0) { throw 'Admin dependencies failed.' } } finally { Pop-Location }
-            }
-            $arguments = @('node_modules/vite/bin/vite.js', '--mode', 'env.local', '--host', '127.0.0.1', '--port', '5300', '--strictPort')
-            $processes += Start-Process -FilePath $node -ArgumentList $arguments -WorkingDirectory $adminRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $logs 'admin.stdout.log') -RedirectStandardError (Join-Path $logs 'admin.stderr.log') -PassThru
-        }
-        if ($processes.Count -gt 0) {
-            $existingProcesses = @()
-            if (Test-Path '_local/frontend-processes.json') {
-                $existingProcesses = @(Get-Content '_local/frontend-processes.json' -Raw -Encoding UTF8 | ConvertFrom-Json | Where-Object { $_.Id -and $_.StartTime })
-            }
-            $newProcesses = @($processes | ForEach-Object { [pscustomobject]@{Id=$_.Id;ProcessName=$_.ProcessName;StartTime=$_.StartTime.ToUniversalTime().ToString('o')} })
-            @($existingProcesses + $newProcesses) | ConvertTo-Json | Set-Content -LiteralPath '_local/frontend-processes.json' -Encoding UTF8
-        }
-    }
-    Write-Host 'Admin: http://127.0.0.1:5300'
-    Write-Host 'WeChat development: pnpm --dir yudao-mall-uniapp dev:mp-weixin'
-    Write-Host 'API:   http://127.0.0.1:48080'
+    Write-Host 'API: http://127.0.0.1:48080'
+    Write-Host 'Customer WeChat: pnpm --dir yudao-mall-uniapp dev:mp-weixin'
+    Write-Host 'Owner WeChat: pnpm --dir yudao-ui-admin-uniapp dev:mp-weixin'
 } finally {
-    foreach ($name in $previousEnvironment.Keys) {
-        [Environment]::SetEnvironmentVariable($name, $previousEnvironment[$name], 'Process')
-    }
     Pop-Location
 }

@@ -2,7 +2,9 @@
 
 - 日期：2026-11-13（北京时间）
 - 状态：设计草案；商品直达首页与三项底部导航已实现首版，其他页面及后端精简尚未实施
-- 适用范围：`yudao-mall-uniapp`、`yudao-ui-admin-vue3`、`ruoyi-vue-pro`
+- 适用范围：`yudao-mall-uniapp`、`yudao-ui-admin-uniapp`、`ruoyi-vue-pro`
+
+2026-11-14更新：运营主入口改为店主微信管理小程序。本次移除本机与GitHub中的电脑管理项目及本地上游连接，服务器服务与配置不在本轮操作范围。
 
 ## 1. 目标与业务边界
 
@@ -10,7 +12,7 @@
 
 客户的主要任务是找商品、购买和查看订单；运营的主要任务是发布商品、发货和处理售后。系统围绕这两组任务组织页面和功能。
 
-本设计采用现有 uni-app + Vue 3 小程序、Vue 3 管理后台和 Java 后端作为实现基础。客户入口为微信小程序，管理后台用于电脑端运营。
+本设计采用客户商城 uni-app 小程序、店主 uni-app 管理小程序和 Java 后端作为实现基础。2026-11-14用户确认店主主要在手机微信中管理商品和订单，运营主项目调整为 `yudao-ui-admin-uniapp`，实施依据见[店主管理端设计](../../yudao-ui-admin-uniapp/docs/DESIGN_ADMIN.md)。用户随后确认整体移除电脑管理前端，原电脑布局描述仅保留为早期业务参考。
 
 首版的界面目标：
 
@@ -19,7 +21,7 @@
 | 客户导航 | 商品、购物车、我的，三个底部入口 |
 | 普通商品发布 | 一个页面完成，主要填写图片、名称、售价、库存和描述 |
 | 普通订单结算 | 一个确认页展示商品、收货信息、运费和实付金额 |
-| 日常后台 | 工作台、商品、订单、设置，四个一级入口 |
+| 日常后台 | 店主微信端固定工作台、商品、订单、我的，四个底部入口 |
 | 运营待办 | 优先展示待发货和待售后，支持直接进入处理 |
 | 页面维护 | 运营可修改 Banner、公告、展示商品和客服信息 |
 
@@ -39,9 +41,9 @@
 | --- | --- | --- |
 | 小程序使用 Vue 3 和 Pinia | 可以沿用现有页面和状态管理 | [main.js](../main.js)、[package.json](../package.json) |
 | 首版首页已固定结构，个人中心仍通过装修组件渲染 | 全局初始化和个人中心仍依赖模板数据，后续继续整理配置来源 | [首页](../pages/index/index.vue)、[个人中心](../pages/index/user.vue)、[应用初始化](../sheep/store/app.js) |
-| 商品发布分为基础设置、价格库存、物流设置、商品详情、其它设置五个页签 | 普通商品需要填写较多通用配置 | [商品发布表单](../../yudao-ui-admin-vue3/src/views/mall/product/spu/form/index.vue) |
+| 商品发布分为基础设置、价格库存、物流设置、商品详情、其它设置五个页签 | 普通商品需要填写较多通用配置 | [商品发布表单](https://github.com/yudaocode/yudao-ui-admin-uniapp/blob/99c5a98ff52f2b610560fdc694dfcbd906a172fa/src/pages-mall/product/spu/form/index.vue) |
 | 结算页包含积分、优惠券及不同订单类型分支 | 应按首版经营规则收敛展示和计算入口 | [确认订单](../pages/order/confirm.vue) |
-| 后台订单列表提供多种筛选条件 | 日常发货需要更直接的待办入口 | [订单管理](../../yudao-ui-admin-vue3/src/views/mall/trade/order/index.vue) |
+| 后台订单列表提供多种筛选条件 | 日常发货需要更直接的待办入口 | [订单管理](https://github.com/yudaocode/yudao-ui-admin-uniapp/blob/99c5a98ff52f2b610560fdc694dfcbd906a172fa/src/pages-mall/trade/order/index.vue) |
 | 交易模块依赖营销模块，装修接口也属于营销模块 | 裁剪营销功能时需要先整理依赖 | [交易模块依赖](../../ruoyi-vue-pro/yudao-module-mall/yudao-module-trade/pom.xml)、[装修 API](../sheep/api/promotion/diy.js) |
 | 多个通用业务模块已经在根 POM 中注释 | 第一轮精简重点应放在商城内部的页面、规则和依赖 | [后端根 POM](../../ruoyi-vue-pro/pom.xml) |
 | 微信发货同步和确认收货已有代码 | 可复用现有实现，仍需验证运行配置与实际订单链路 | [微信订单同步](../../ruoyi-vue-pro/yudao-module-mall/yudao-module-trade/src/main/java/cn/iocoder/yudao/module/trade/service/order/handler/TradeStatusSyncToWxaOrderHandler.java)、[收货确认](../pages/order/detail.vue) |
@@ -136,7 +138,9 @@ flowchart LR
 
 后续再评估将必要内容迁移到简单的店铺配置接口。迁移后统一配置来源，结束对旧模板的运行依赖，再收缩装修编辑器和关联代码。
 
-## 6. 运营后台设计
+## 6. 运营后台设计（原电脑端方案参考）
+
+2026-11-14起，手机店主管理的实施范围以[新Admin设计](../../yudao-ui-admin-uniapp/docs/DESIGN_ADMIN.md)为准。以下仅为早期业务参考，电脑前端源码与本地上游配置已移除；服务器由服务器侧独立维护。
 
 ### 6.1 四个一级入口
 

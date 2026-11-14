@@ -5,7 +5,9 @@
 - 状态：待实施；本文不表示业务代码、数据库、定时任务或生产配置已经变更
 - 经营模式：自营卖货，客户通过微信小程序直接购买
 - 适用项目：`ruoyi-vue-pro`，配套服务小程序和 admin 的精简改造
-- 关联文档：[商城总体设计](../../yudao-mall-uniapp/docs/DESIGN_YUANMALL.md)、[管理后台设计](../../yudao-ui-admin-vue3/docs/DESIGN_ADMIN.md)
+- 关联文档：[商城总体设计](../../yudao-mall-uniapp/docs/DESIGN_YUANMALL.md)、[店主微信管理端设计](../../yudao-ui-admin-uniapp/docs/DESIGN_ADMIN.md)
+
+2026-11-14接入定位修订：运营主入口改为 `yudao-ui-admin-uniapp` 店主微信小程序，复用现有 `/admin-api`、管理员认证和角色权限。客户小程序继续使用 `/app-api` 与会员认证。前端改换运行平台不要求新建Java服务、迁移业务数据或重建数据库；实际接口兼容与管理员操作仍需联调。
 
 ## 1. 设计目标与边界
 
