@@ -15,10 +15,11 @@
 <script lang="ts" setup>
 import { parseId } from '@/utils/id'
 
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import type { ProductCategory } from '@/api/mall/product/category'
 import { getProductCategoryList } from '@/api/mall/product/category'
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   modelValue?: number // 已选分类编号
   label?: string // 字段标题
   labelWidth?: string // 标题宽度
@@ -37,11 +38,15 @@ const emit = defineEmits<{
   'update:modelValue': [value: number]
 }>()
 
-const options = ref<{ label: string, value: number }[]>([]) // 商品分类选项
+const categories = ref<ProductCategory[]>([])
+const options = computed(() => {
+  const parentIds = new Set(categories.value.map(item => item.parentId).filter(Boolean))
+  return categories.value.filter(item => item.id === props.modelValue
+    || (item.parentId === 0 && item.status === 0 && !parentIds.has(item.id)))
+    .map(item => ({ label: item.name || String(item.id), value: parseId(item.id) as number }))
+})
 
-/** 加载商品分类列表（回显需要据此解析名称） */
 onMounted(async () => {
-  const list = await getProductCategoryList({})
-  options.value = list.map(item => ({ label: item.name || String(item.id), value: parseId(item.id) as number }))
+  categories.value = await getProductCategoryList({})
 })
 </script>

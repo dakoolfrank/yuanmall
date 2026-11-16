@@ -13,4 +13,7 @@ public class AppTradeOrderCreateRespVO {
     @Schema(description = "支付订单编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1024")
     private Long payOrderId;
 
+    private Integer paymentMethod;
+    private Boolean payStatus;
+
 }

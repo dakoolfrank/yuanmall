@@ -48,11 +48,11 @@
         <text class="w-160rpx shrink-0 text-26rpx text-[#666]">销售价(元)</text>
         <wd-input-number v-model="sku.price" :min="0" :step="0.01" :precision="2" @change="emitChange" />
       </view>
-      <view class="flex items-center gap-12rpx py-6rpx">
+      <view v-show="!compact" class="flex items-center gap-12rpx py-6rpx">
         <text class="w-160rpx shrink-0 text-26rpx text-[#666]">市场价(元)</text>
         <wd-input-number v-model="sku.marketPrice" :min="0" :step="0.01" :precision="2" @change="emitChange" />
       </view>
-      <view class="flex items-center gap-12rpx py-6rpx">
+      <view v-show="!compact" class="flex items-center gap-12rpx py-6rpx">
         <text class="w-160rpx shrink-0 text-26rpx text-[#666]">成本价(元)</text>
         <wd-input-number v-model="sku.costPrice" :min="0" :step="0.01" :precision="2" @change="emitChange" />
       </view>
@@ -60,24 +60,24 @@
         <text class="w-160rpx shrink-0 text-26rpx text-[#666]">库存</text>
         <wd-input-number v-model="sku.stock" :min="0" @change="emitChange" />
       </view>
-      <view class="flex items-center gap-12rpx py-6rpx">
+      <view v-show="!compact" class="flex items-center gap-12rpx py-6rpx">
         <text class="w-160rpx shrink-0 text-26rpx text-[#666]">条码</text>
         <wd-input v-model="sku.barCode" clearable placeholder="请输入条码" @change="emitChange" />
       </view>
-      <view class="flex items-center gap-12rpx py-6rpx">
+      <view v-show="!compact" class="flex items-center gap-12rpx py-6rpx">
         <text class="w-160rpx shrink-0 text-26rpx text-[#666]">重量(kg)</text>
         <wd-input-number v-model="sku.weight" :min="0" :step="0.01" :precision="2" @change="emitChange" />
       </view>
-      <view class="flex items-center gap-12rpx py-6rpx">
+      <view v-show="!compact" class="flex items-center gap-12rpx py-6rpx">
         <text class="w-160rpx shrink-0 text-26rpx text-[#666]">体积(m³)</text>
         <wd-input-number v-model="sku.volume" :min="0" :step="0.01" :precision="2" @change="emitChange" />
       </view>
-      <view class="flex items-start gap-12rpx py-6rpx">
+      <view v-show="!compact" class="flex items-start gap-12rpx py-6rpx">
         <text class="w-160rpx shrink-0 text-26rpx text-[#666]">图片</text>
         <yd-upload-img v-model="sku.picUrl" @update:model-value="emitChange" />
       </view>
       <!-- 单独分佣时展示一二级佣金 -->
-      <template v-if="subCommissionType">
+      <template v-if="subCommissionType && !compact">
         <view class="flex items-center gap-12rpx py-6rpx">
           <text class="w-160rpx shrink-0 text-26rpx text-[#666]">一级佣金(元)</text>
           <wd-input-number v-model="sku.firstBrokeragePrice" :min="0" :step="0.01" :precision="2" @change="emitChange" />
@@ -193,6 +193,7 @@ interface SpecItem {
 
 const props = defineProps<{
   modelValue: ProductSku[] // SKU 列表（金额单位元）
+  compact?: boolean // 精简展示，仅显示售价和库存
   specType?: boolean // 是否多规格
   subCommissionType?: boolean // 是否单独分佣
 }>()

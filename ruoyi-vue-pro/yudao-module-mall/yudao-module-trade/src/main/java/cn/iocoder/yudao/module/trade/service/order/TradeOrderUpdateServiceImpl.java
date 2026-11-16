@@ -135,8 +135,22 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
 
     // =================== Order ===================
 
+    private void validatePaymentMethod(AppTradeOrderSettlementReqVO request) {
+        if (request.getPaymentMethod() != null && request.getPaymentMethod() != 1 && request.getPaymentMethod() != 2) {
+            throw exception(OFFLINE_ORDER_INVALID);
+        }
+        if (Integer.valueOf(2).equals(request.getPaymentMethod())
+                && (!DeliveryTypeEnum.STORE.getType().equals(request.getDeliveryType())
+                    || request.getSeckillActivityId() != null || request.getCombinationActivityId() != null
+                    || request.getCombinationHeadId() != null || request.getBargainRecordId() != null
+                    || request.getPointActivityId() != null)) {
+            throw exception(OFFLINE_ORDER_INVALID);
+        }
+    }
+
     @Override
     public AppTradeOrderSettlementRespVO settlementOrder(Long userId, AppTradeOrderSettlementReqVO settlementReqVO) {
+        validatePaymentMethod(settlementReqVO);
         // 1. 获得收货地址
         MemberAddressRespDTO address = getAddress(userId, settlementReqVO.getAddressId());
         if (address != null) {
@@ -187,6 +201,7 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
     @Transactional(rollbackFor = Exception.class)
     @TradeOrderLog(operateType = TradeOrderOperateTypeEnum.MEMBER_CREATE)
     public TradeOrderDO createOrder(Long userId, AppTradeOrderCreateReqVO createReqVO) {
+        validatePaymentMethod(createReqVO);
         // 1.1 价格计算
         TradePriceCalculateRespBO calculateRespBO = calculatePrice(userId, createReqVO);
         // 1.2 构建订单
@@ -210,8 +225,13 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
                                          TradePriceCalculateRespBO calculateRespBO) {
         TradeOrderDO order = TradeOrderConvert.INSTANCE.convert(userId, createReqVO, calculateRespBO);
         order.setType(calculateRespBO.getType());
+        order.setPaymentMethod(createReqVO.getPaymentMethod() == null ? 1 : createReqVO.getPaymentMethod());
+        if (order.getPaymentMethod() == 2 && !TradeOrderTypeEnum.NORMAL.getType().equals(order.getType())) {
+            throw exception(OFFLINE_ORDER_INVALID);
+        }
         order.setNo(tradeNoRedisDAO.generate(TradeNoRedisDAO.TRADE_ORDER_NO_PREFIX));
-        order.setStatus(TradeOrderStatusEnum.UNPAID.getStatus());
+        order.setStatus(Integer.valueOf(2).equals(order.getPaymentMethod())
+                ? TradeOrderStatusEnum.UNDELIVERED.getStatus() : TradeOrderStatusEnum.UNPAID.getStatus());
         order.setRefundStatus(TradeOrderRefundStatusEnum.NONE.getStatus());
         order.setProductCount(getSumValue(calculateRespBO.getItems(), TradePriceCalculateRespBO.OrderItem::getCount, Integer::sum));
         order.setUserIp(getClientIP()).setTerminal(getTerminal());
@@ -219,10 +239,14 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         order.setGiveCouponTemplateCounts(calculateRespBO.getGiveCouponTemplateCounts());
         // 支付 + 退款信息
         order.setAdjustPrice(0).setPayStatus(false);
+        if (Integer.valueOf(2).equals(order.getPaymentMethod()) && order.getPayPrice() <= 0) {
+            throw exception(OFFLINE_ORDER_INVALID);
+        }
         order.setRefundStatus(TradeOrderRefundStatusEnum.NONE.getStatus()).setRefundPrice(0);
         // 物流信息
         order.setDeliveryType(createReqVO.getDeliveryType());
-        if (Objects.equals(createReqVO.getDeliveryType(), DeliveryTypeEnum.EXPRESS.getType())) {
+        if (Objects.equals(createReqVO.getDeliveryType(), DeliveryTypeEnum.EXPRESS.getType())
+                || Objects.equals(createReqVO.getDeliveryType(), DeliveryTypeEnum.STORE.getType())) {
             MemberAddressRespDTO address = addressApi.getAddress(createReqVO.getAddressId(), userId);
             Assert.notNull(address, "地址({}) 不能为空", createReqVO.getAddressId()); // 价格计算时，已经计算
             order.setReceiverName(address.getName()).setReceiverMobile(address.getMobile())
@@ -261,7 +285,7 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
 
         // 3. 生成预支付
         // 特殊情况：积分兑换时，可能支付金额为零
-        if (order.getPayPrice() > 0) {
+        if (order.getPayPrice() > 0 && !Integer.valueOf(2).equals(order.getPaymentMethod())) {
             createPayOrder(order, orderItems);
         }
 
@@ -288,6 +312,9 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
     public void updateOrderPaid(Long id, Long payOrderId) {
         // 1.1 校验订单是否存在
         TradeOrderDO order = validateOrderExists(id);
+        if (Integer.valueOf(2).equals(order.getPaymentMethod())) {
+            throw exception(OFFLINE_ORDER_INVALID);
+        }
         // 1.2 校验订单已支付
         if (!TradeOrderStatusEnum.isUnpaid(order.getStatus()) || order.getPayStatus()) {
             // 特殊：支付单号相同，直接返回，说明重复回调
@@ -526,6 +553,9 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
      * @param order 订单
      */
     private void receiveOrder0(TradeOrderDO order) {
+        if (Integer.valueOf(2).equals(order.getPaymentMethod()) && !Boolean.TRUE.equals(order.getPayStatus())) {
+            throw exception(OFFLINE_RECEIPT_INVALID);
+        }
         // 1. 更新 TradeOrderDO 状态为已完成
         LocalDateTime receiveTime = LocalDateTime.now();
         int updateCount = tradeOrderMapper.updateByIdAndStatus(order.getId(), order.getStatus(),
@@ -573,8 +603,15 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         if (order == null) {
             throw exception(ORDER_NOT_FOUND);
         }
+        if (Integer.valueOf(2).equals(order.getPaymentMethod())) {
+            order = tradeOrderMapper.selectForUpdate(id);
+        }
+        // 见面付款只允许尚未开始配送、尚未收款时取消。
+        boolean offlineCancelable = Integer.valueOf(2).equals(order.getPaymentMethod())
+                && !Boolean.TRUE.equals(order.getPayStatus())
+                && TradeOrderStatusEnum.UNDELIVERED.getStatus().equals(order.getStatus());
         // 1.2 校验状态
-        if (ObjectUtil.notEqual(order.getStatus(), TradeOrderStatusEnum.UNPAID.getStatus())) {
+        if (!offlineCancelable && ObjectUtil.notEqual(order.getStatus(), TradeOrderStatusEnum.UNPAID.getStatus())) {
             throw exception(ORDER_CANCEL_FAIL_STATUS_NOT_UNPAID);
         }
         // 1.3 校验是否支持延迟（不允许取消）
@@ -757,6 +794,9 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
     public void updateOrderPrice(TradeOrderUpdatePriceReqVO reqVO) {
         // 1.1 校验交易订单
         TradeOrderDO order = validateOrderExists(reqVO.getId());
+        if (Integer.valueOf(2).equals(order.getPaymentMethod())) {
+            throw exception(OFFLINE_ORDER_INVALID); // 禁止调价与现场收款并发改变应收金额。
+        }
         if (order.getPayStatus()) {
             throw exception(ORDER_UPDATE_PRICE_FAIL_PAID);
         }

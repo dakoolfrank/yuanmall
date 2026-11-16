@@ -143,6 +143,9 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         if (order == null) {
             throw exception(ORDER_NOT_FOUND);
         }
+        if (Integer.valueOf(2).equals(order.getPaymentMethod())) {
+            throw exception(cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.OFFLINE_REFUND_MANUAL);
+        }
         // TODO 芋艿：超过一定时间，不允许售后
         // 已取消，无法发起售后
         if (TradeOrderStatusEnum.isCanceled(order.getStatus())) {

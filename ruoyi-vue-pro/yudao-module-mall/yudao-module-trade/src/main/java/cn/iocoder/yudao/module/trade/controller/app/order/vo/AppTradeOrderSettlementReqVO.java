@@ -36,6 +36,11 @@ public class AppTradeOrderSettlementReqVO {
     @InEnum(value = DeliveryTypeEnum.class, message = "配送方式不正确")
     private Integer deliveryType;
 
+    @Schema(description = "付款方式：1在线支付，2见面付款；不传默认为在线支付")
+    @javax.validation.constraints.Min(1)
+    @javax.validation.constraints.Max(2)
+    private Integer paymentMethod = 1;
+
     @Schema(description = "收件地址编号", example = "1")
     private Long addressId;
 

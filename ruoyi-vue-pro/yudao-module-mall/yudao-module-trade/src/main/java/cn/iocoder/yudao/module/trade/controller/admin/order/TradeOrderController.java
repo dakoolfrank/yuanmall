@@ -40,6 +40,9 @@ import static cn.iocoder.yudao.framework.security.core.util.SecurityFrameworkUti
 public class TradeOrderController {
 
     @Resource
+    private cn.iocoder.yudao.module.trade.service.order.TradeStoreOrderService storeOrderService;
+
+    @Resource
     private TradeOrderUpdateService tradeOrderUpdateService;
     @Resource
     private TradeOrderQueryService tradeOrderQueryService;
@@ -105,6 +108,30 @@ public class TradeOrderController {
     public CommonResult<List<?>> getOrderExpressTrackList(@RequestParam("id") Long id) {
         return success(TradeOrderConvert.INSTANCE.convertList02(
                 tradeOrderQueryService.getExpressTrackList(id)));
+    }
+
+    @PutMapping("/store-delivery")
+    @Operation(summary = "店铺开始配送")
+    @PreAuthorize("@ss.hasPermission('trade:order:update')")
+    public CommonResult<Boolean> startStoreDelivery(@RequestParam("id") Long id) {
+        storeOrderService.startDelivery(id, getLoginUserId());
+        return success(true);
+    }
+
+    @PutMapping("/confirm-offline-payment")
+    @Operation(summary = "确认见面收款，不调用微信支付")
+    @PreAuthorize("@ss.hasPermission('trade:order:confirm-offline-payment')")
+    public CommonResult<Boolean> confirmOfflinePayment(@javax.validation.Valid @RequestBody TradeOrderOfflineReceiptReqVO request) {
+        storeOrderService.confirmReceipt(request, getLoginUserId());
+        return success(true);
+    }
+
+    @PutMapping("/store-receive")
+    @Operation(summary = "店铺确认送达，必须已收款")
+    @PreAuthorize("@ss.hasPermission('trade:order:update')")
+    public CommonResult<Boolean> receiveStoreDelivery(@RequestParam("id") Long id) {
+        storeOrderService.completeDelivery(id, getLoginUserId());
+        return success(true);
     }
 
     @PutMapping("/delivery")

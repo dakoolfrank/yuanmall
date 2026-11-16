@@ -17,7 +17,7 @@
                 {{ formData.no || '-' }}
               </view>
               <view class="mt-8rpx text-24rpx text-[#999]">
-                申请时间：{{ formatDateTime(formData.createTime) || '-' }}
+                申请时间：{{ formatBeijingDateTime(formData.createTime) || '-' }}
               </view>
             </view>
             <dict-tag :type="DICT_TYPE.TRADE_AFTER_SALE_STATUS" :value="formData.status" />
@@ -99,10 +99,10 @@
           </view>
           <view class="text-26rpx space-y-10rpx">
             <view><text class="text-[#999]">审核备注：</text>{{ formData.auditReason || '-' }}</view>
-            <view><text class="text-[#999]">审核时间：</text>{{ formatDateTime(formData.auditTime) || '-' }}</view>
+            <view><text class="text-[#999]">审核时间：</text>{{ formatBeijingDateTime(formData.auditTime) || '-' }}</view>
             <view><text class="text-[#999]">退货物流：</text>{{ formData.logisticsNo || '-' }}</view>
-            <view><text class="text-[#999]">收货时间：</text>{{ formatDateTime(formData.receiveTime) || '-' }}</view>
-            <view><text class="text-[#999]">退款时间：</text>{{ formatDateTime(formData.refundTime) || '-' }}</view>
+            <view><text class="text-[#999]">收货时间：</text>{{ formatBeijingDateTime(formData.receiveTime) || '-' }}</view>
+            <view><text class="text-[#999]">退款时间：</text>{{ formatBeijingDateTime(formData.refundTime) || '-' }}</view>
           </view>
         </view>
 
@@ -128,7 +128,7 @@
                   {{ log.content || '-' }}
                 </view>
                 <view class="mt-6rpx text-22rpx text-[#999]">
-                  {{ formatDateTime(log.createTime) || '-' }}
+                  {{ formatBeijingDateTime(log.createTime) || '-' }}
                 </view>
               </view>
             </view>
@@ -204,7 +204,7 @@ import { useAccess } from '@/hooks/useAccess'
 import { formatDisplayMoney } from '@/utils/format'
 import { navigateBackPlus } from '@/utils'
 import { DICT_TYPE, TradeAfterSaleStatusEnum } from '@/utils/constants'
-import { formatDateTime } from '@/utils/date'
+import { formatBeijingDateTime } from '@/utils/date'
 
 const props = defineProps<{ id?: number | any }>()
 

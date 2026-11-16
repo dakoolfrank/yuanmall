@@ -17,16 +17,22 @@
                 {{ formData.no || '-' }}
               </view>
               <view class="mt-8rpx text-24rpx text-[#999]">
-                下单时间：{{ formatDateTime(formData.createTime) || '-' }}
+                下单时间：{{ formatBeijingDateTime(formData.createTime) || '-' }}
               </view>
             </view>
-            <dict-tag :type="DICT_TYPE.TRADE_ORDER_STATUS" :value="formData.status" />
+            <wd-tag v-if="formData.deliveryType === DeliveryTypeEnum.STORE && formData.status === TradeOrderStatusEnum.UNDELIVERED" type="primary" variant="plain">
+              待配送
+            </wd-tag>
+            <wd-tag v-else-if="formData.deliveryType === DeliveryTypeEnum.STORE && formData.status === TradeOrderStatusEnum.DELIVERED" type="primary" variant="plain">
+              配送中
+            </wd-tag>
+            <dict-tag v-else :type="DICT_TYPE.TRADE_ORDER_STATUS" :value="formData.status" />
           </view>
           <view class="grid grid-cols-2 gap-x-20rpx gap-y-12rpx text-26rpx">
             <view><text class="text-[#999]">买家：</text>{{ formData.user?.nickname || '-' }}</view>
             <view><text class="text-[#999]">来源：</text>{{ getDictLabel(DICT_TYPE.TERMINAL, formData.terminal) || '-' }}</view>
             <view><text class="text-[#999]">类型：</text>{{ getDictLabel(DICT_TYPE.TRADE_ORDER_TYPE, formData.type) || '-' }}</view>
-            <view><text class="text-[#999]">支付：</text>{{ formData.payStatus ? '已支付' : '未支付' }}</view>
+            <view><text class="text-[#999]">支付：</text>{{ formData.paymentMethod === 2 ? (formData.payStatus ? '见面付款 · 已付款' : '见面付款') : (formData.payStatus ? '在线支付 · 已付款' : '在线支付 · 未付款') }}</view>
             <view v-if="formData.brokerageUser">
               <text class="text-[#999]">推广用户：</text>{{ formData.brokerageUser.nickname || '-' }}
             </view>
@@ -36,6 +42,12 @@
           </view>
         </view>
 
+        <view v-if="formData.receiptTime" class="mb-24rpx rounded-12rpx bg-white p-24rpx">
+          <view>线下付款登记</view>
+          <view>{{ formData.receiptMethod === 'cash' ? '现金' : '现场扫码' }} · {{ formatDisplayMoney(formData.receiptAmount) }}</view>
+          <view>确认时间：{{ formatBeijingDateTime(formData.receiptTime) }}</view>
+          <view>确认管理员：{{ formData.receiptOperatorId }}</view>
+        </view>
         <view class="mb-24rpx rounded-12rpx bg-white p-24rpx shadow-sm">
           <view class="mb-16rpx text-30rpx text-[#333] font-semibold">
             金额信息
@@ -49,7 +61,7 @@
             <view><text class="text-[#999]">VIP 优惠：</text>{{ formatDisplayMoney(formData.vipPrice) }}</view>
             <view><text class="text-[#999]">订单调价：</text>{{ formatDisplayMoney(formData.adjustPrice) }}</view>
             <view class="text-[#fa4350] font-semibold">
-              <text>实付：</text>{{ formatDisplayMoney(formData.payPrice) }}
+              <text>{{ formData.payStatus ? '实收：' : '应收：' }}</text>{{ formatDisplayMoney(formData.payPrice) }}
             </view>
           </view>
         </view>
@@ -59,12 +71,12 @@
             收货与配送
           </view>
           <view class="text-26rpx text-[#333] space-y-10rpx">
-            <view><text class="text-[#999]">配送方式：</text>{{ getDictLabel(DICT_TYPE.TRADE_DELIVERY_TYPE, formData.deliveryType) || '-' }}</view>
+            <view><text class="text-[#999]">配送方式：</text>{{ formData.deliveryType === DeliveryTypeEnum.STORE ? '店铺配送（免配送费）' : getDictLabel(DICT_TYPE.TRADE_DELIVERY_TYPE, formData.deliveryType) || '-' }}</view>
             <view v-if="formData.deliveryType === DeliveryTypeEnum.PICK_UP">
               <text class="text-[#999]">自提门店：</text>{{ pickUpStoreName || '-' }}
             </view>
             <view v-if="formData.deliveryTime">
-              <text class="text-[#999]">发货时间：</text>{{ formatDateTime(formData.deliveryTime) }}
+              <text class="text-[#999]">发货时间：</text>{{ formatBeijingDateTime(formData.deliveryTime) }}
             </view>
             <view><text class="text-[#999]">收件人：</text>{{ formData.receiverName || '-' }}</view>
             <view><text class="text-[#999]">联系电话：</text>{{ formData.receiverMobile || '-' }}</view>
@@ -126,7 +138,7 @@
             </view>
           </view>
           <view v-for="(log, index) in formData.logs || []" :key="index" class="mb-12rpx text-24rpx text-[#666] last:mb-0">
-            <text class="text-[#999]">{{ formatDateTime(log.createTime) || '-' }}</text>
+            <text class="text-[#999]">{{ formatBeijingDateTime(log.createTime) || '-' }}</text>
             <text class="ml-12rpx">{{ log.content || '-' }}</text>
           </view>
         </view>
@@ -136,8 +148,17 @@
     </scroll-view>
 
     <!-- 底部操作按钮：按状态/权限显式展示，每个动作各自的按钮 + 处理函数 -->
-    <view v-if="formData && (canRemark || canPrice || canDelivery || canAddress || canPickUp)" class="yd-detail-footer">
-      <view class="yd-detail-footer-actions">
+    <view v-if="formData && (canRemark || canPrice || canDelivery || canAddress || canPickUp || canStoreStart || canCollect || canStoreComplete)" class="yd-detail-footer">
+      <view class="yd-detail-footer-actions store-actions">
+        <wd-button v-if="canStoreStart" class="flex-1" :disabled="submitting" @click="handleStoreAction('start')">
+          开始配送
+        </wd-button>
+        <wd-button v-if="canCollect" class="flex-1" type="primary" :disabled="submitting" @click="openReceipt">
+          已付款
+        </wd-button>
+        <wd-button v-if="canStoreComplete" class="flex-1" type="success" :disabled="submitting" @click="handleStoreAction('complete')">
+          确认送达
+        </wd-button>
         <wd-button v-if="canRemark" class="flex-1" type="warning" @click="openRemark">
           备注
         </wd-button>
@@ -155,6 +176,34 @@
         </wd-button>
       </view>
     </view>
+
+    <wd-popup v-model="receiptVisible" position="bottom" closable custom-style="border-radius: 16px 16px 0 0;" @close="receiptVisible = false">
+      <view class="receipt-dialog">
+        <view class="receipt-title">
+          标记已付款
+        </view>
+        <view>订单：{{ formData?.no }}</view>
+        <view class="receipt-amount">
+          应收 {{ formatDisplayMoney(formData?.payPrice) }}
+        </view>
+        <wd-radio-group v-model="receiptMethod" type="button">
+          <wd-radio value="cash">
+            现金
+          </wd-radio><wd-radio value="scan">
+            现场扫码
+          </wd-radio>
+        </wd-radio-group>
+        <view class="receipt-note">
+          店主收到现金或扫码款后，在此手动登记已付款。
+        </view>
+        <wd-checkbox v-model="receiptConfirmed">
+          我已核实收到本单全额款项
+        </wd-checkbox>
+        <wd-button block :loading="submitting" :disabled="!receiptMethod || !receiptConfirmed || submitting" @click="handleReceipt">
+          确认标记已付款
+        </wd-button>
+      </view>
+    </wd-popup>
 
     <!-- 修改备注 -->
     <wd-popup v-model="remarkVisible" position="bottom" closable custom-style="border-radius: 24rpx 24rpx 0 0;" @close="remarkVisible = false">
@@ -281,10 +330,13 @@ import { useDialog } from '@wot-ui/ui/components/wd-dialog'
 import { useToast } from '@wot-ui/ui/components/wd-toast'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
+  completeStoreDelivery,
+  confirmOfflinePayment,
   deliveryTradeOrder,
   getTradeOrder,
   getTradeOrderExpressTrackList,
   pickUpTradeOrder,
+  startStoreDelivery,
   updateTradeOrderAddress,
   updateTradeOrderPrice,
   updateTradeOrderRemark,
@@ -297,9 +349,10 @@ import { useAccess } from '@/hooks/useAccess'
 import { formatDisplayMoney, yuanToFen } from '@/utils/format'
 import { navigateBackPlus } from '@/utils'
 import { DeliveryTypeEnum, DICT_TYPE, TradeOrderStatusEnum } from '@/utils/constants'
-import { formatDateTime } from '@/utils/date'
+import { formatBeijingDateTime } from '@/utils/date'
+import { canMarkOfflineOrderPaid } from '@/utils/offlinePayment'
 
-const props = defineProps<{ id?: number | any }>()
+const props = defineProps<{ id?: number | any, markPaid?: string | number }>()
 
 definePage({
   style: {
@@ -337,6 +390,43 @@ const canPrice = computed(() => canRemark.value && formData.value?.status === Tr
 const canDelivery = computed(() => canRemark.value && formData.value?.status === TradeOrderStatusEnum.UNDELIVERED && formData.value?.deliveryType === DeliveryTypeEnum.EXPRESS) // 待发货 + 快递
 const canAddress = computed(() => canDelivery.value) // 与发货同条件
 const canPickUp = computed(() => !!formData.value && hasAccessByCodes(['trade:order:pick-up']) && formData.value?.status === TradeOrderStatusEnum.UNDELIVERED && formData.value?.deliveryType === DeliveryTypeEnum.PICK_UP) // 待发货 + 自提
+
+const receiptVisible = ref(false)
+const receiptMethod = ref<'cash' | 'scan' | ''>('')
+const receiptConfirmed = ref(false)
+const canStoreStart = computed(() => canRemark.value && formData.value?.deliveryType === DeliveryTypeEnum.STORE && formData.value?.status === TradeOrderStatusEnum.UNDELIVERED && (formData.value.paymentMethod === 2 || formData.value.payStatus))
+const canCollect = computed(() => hasAccessByCodes(['trade:order:confirm-offline-payment']) && canMarkOfflineOrderPaid(formData.value))
+const canStoreComplete = computed(() => canRemark.value && formData.value?.deliveryType === DeliveryTypeEnum.STORE && formData.value?.status === TradeOrderStatusEnum.DELIVERED && formData.value.payStatus)
+function openReceipt() {
+  if (!canCollect.value || submitting.value)
+    return
+  receiptMethod.value = ''
+  receiptConfirmed.value = false
+  receiptVisible.value = true
+}
+async function handleReceipt() {
+  if (!canCollect.value || submitting.value || !receiptConfirmed.value || !receiptMethod.value || !formData.value?.id || formData.value.payPrice == null)
+    return
+  const data = { id: formData.value.id, amount: formData.value.payPrice, method: receiptMethod.value }
+  submitting.value = true
+  try {
+    await dialog.confirm({ title: '标记已付款', msg: `确认你已在线下收到 ${formatDisplayMoney(data.amount)}（${data.method === 'cash' ? '现金' : '现场扫码'}）？保存后会登记为已付款，并记录操作管理员和时间。` })
+    await confirmOfflinePayment(data)
+    receiptVisible.value = false
+    await afterSubmit()
+  } catch { /* 取消或接口拒绝时保留输入，接口错误由统一请求层显示。 */ } finally { submitting.value = false }
+}
+async function handleStoreAction(action: 'start' | 'complete') {
+  if (submitting.value || !formData.value?.id || (action === 'start' ? !canStoreStart.value : !canStoreComplete.value))
+    return
+  const id = formData.value.id
+  submitting.value = true
+  try {
+    await dialog.confirm({ title: action === 'start' ? '开始配送' : '确认送达', msg: action === 'start' ? '确认安排店铺配送？见面付款收到钱后，请点“已付款”登记。' : '确认商品已送达顾客？' })
+    await (action === 'start' ? startStoreDelivery(id) : completeStoreDelivery(id))
+    await afterSubmit()
+  } catch { /* 取消或失败时不改变本地订单状态。 */ } finally { submitting.value = false }
+}
 
 /** 返回上一页 */
 function handleBack() {
@@ -478,7 +568,10 @@ async function handlePickUp() {
 /** 初始化 */
 onMounted(async () => {
   await Promise.all([
-    loadDetail(),
+    loadDetail().then(() => {
+      if (String(props.markPaid) === '1')
+        openReceipt()
+    }),
     getAreaTree().then((list) => {
       areaTree.value = list
     }),
@@ -491,3 +584,29 @@ onMounted(async () => {
   ])
 })
 </script>
+
+<style scoped>
+.store-actions {
+  flex-wrap: wrap;
+}
+.receipt-dialog {
+  padding: 24px 20px;
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  font-size: 14px;
+}
+.receipt-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+.receipt-amount {
+  font-size: 24px;
+  color: #2e644b;
+}
+.receipt-note {
+  color: #778174;
+  line-height: 1.6;
+}
+</style>

@@ -10,11 +10,6 @@
     <!-- 详情内容 -->
     <wd-cell-group border>
       <wd-cell title="分类名称" :value="formData.name || '-'" />
-      <wd-cell title="上级分类" :value="parentName" />
-      <wd-cell title="分类图片">
-        <wd-img v-if="formData.picUrl" :src="formData.picUrl" width="112rpx" height="112rpx" radius="8rpx" mode="aspectFill" enable-preview />
-        <text v-else>-</text>
-      </wd-cell>
       <wd-cell title="分类排序" :value="formData.sort != null ? String(formData.sort) : '-'" />
       <wd-cell title="开启状态">
         <dict-tag v-if="formData.status != null" :type="DICT_TYPE.COMMON_STATUS" :value="formData.status" />
@@ -42,8 +37,8 @@ import type { ProductCategory } from '@/api/mall/product/category'
 import { onUnload } from '@dcloudio/uni-app'
 import { useDialog } from '@wot-ui/ui/components/wd-dialog'
 import { useToast } from '@wot-ui/ui/components/wd-toast'
-import { computed, onMounted, ref } from 'vue'
-import { deleteProductCategory, getProductCategory, getProductCategoryList } from '@/api/mall/product/category'
+import { onMounted, ref } from 'vue'
+import { deleteProductCategory, getProductCategory } from '@/api/mall/product/category'
 import { useAccess } from '@/hooks/useAccess'
 import { delay, navigateBackPlus } from '@/utils'
 import { DICT_TYPE } from '@/utils/constants'
@@ -63,17 +58,6 @@ const dialog = useDialog()
 const toast = useToast()
 const formData = ref<ProductCategory>({} as ProductCategory) // 详情数据
 const deleting = ref(false) // 删除状态
-const categoryNameMap = ref<Record<number, string>>({}) // 分类编号到名称映射，用于回显上级分类名
-
-/** 上级分类名称：0 或空为顶级分类，否则从映射取名 */
-const parentName = computed(() => {
-  const parentId = formData.value.parentId
-  if (parentId == null || parentId === 0) {
-    return '顶级分类'
-  }
-  return categoryNameMap.value[parentId] || `分类 #${parentId}`
-})
-
 /** 返回上一页 */
 function handleBack() {
   navigateBackPlus('/pages-mall/product/category/index')
@@ -86,19 +70,7 @@ async function getDetail() {
   }
   try {
     toast.loading('加载中...')
-    // 同时加载分类列表以解析上级分类名
-    const [detail, all] = await Promise.all([
-      getProductCategory(props.id),
-      getProductCategoryList({}),
-    ])
-    const map: Record<number, string> = {}
-    all.forEach((item) => {
-      if (item.id != null) {
-        map[item.id] = item.name
-      }
-    })
-    categoryNameMap.value = map
-    formData.value = detail
+    formData.value = await getProductCategory(props.id)
   } finally {
     toast.close()
   }

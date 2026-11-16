@@ -1,213 +1,234 @@
 <template>
-  <view class="auth-container">
-    <!-- 顶部 -->
-    <Header />
-
-    <!-- 表单区域 -->
-    <view class="form-container">
-      <TenantPicker
-        ref="tenantPickerRef"
-        :disabled="Boolean(socialBindingContext) || authLoading"
-        :preferred-tenant-id="socialBindingContext?.tenantId"
-      />
-      <view v-if="socialBindingContext" class="mb-24rpx rounded-12rpx bg-[#e8f4ff] px-24rpx py-20rpx text-26rpx text-[#1890ff]">
-        三方授权成功，请使用账号密码登录完成绑定
+  <view class="auth-container shop-login">
+    <view class="shop-login__card">
+      <view class="shop-login__brand">
+        <image class="shop-login__logo" src="/static/brand/tuantuanyuanyuan-logo.png" mode="aspectFit" />
+        <text class="shop-login__title">{{ title }}</text>
       </view>
-      <view class="input-item">
-        <wd-icon name="user" size="20px" color="#1890ff" />
-        <wd-input
-          v-model="formData.username"
-          placeholder="请输入用户名"
-          clearable
-          clear-trigger="focus"
-        />
-      </view>
-      <view class="input-item">
-        <wd-icon name="lock" size="20px" color="#1890ff" />
-        <wd-input
-          v-model="formData.password"
-          placeholder="请输入密码"
-          clearable
-          clear-trigger="focus"
-          show-password
-        />
-      </view>
-      <view v-if="captchaEnabled">
-        <Verify
-          ref="verifyRef"
-          :captcha-type="captchaType"
-          explain="向右滑动完成验证"
-          :img-size="{ width: '300px', height: '150px' }"
-          mode="pop"
-          @success="verifySuccess"
-        />
-      </view>
-
-      <!-- 登录按钮 -->
-      <view class="mb-2 mt-2 flex justify-between">
-        <text v-if="!socialBindingContext && !authLoading" class="text-28rpx text-[#1890ff]" @click="goToSmsLogin">
-          验证码登录
-        </text>
-        <text v-if="!authLoading" class="text-28rpx text-[#1890ff]" @click="goToForgetPassword">
-          忘记密码？
-        </text>
-      </view>
-      <wd-button block :disabled="authLoading" :loading="loading" type="primary" @click="handleLogin">
-        登录
-      </wd-button>
-
-      <!-- 第三方登录 -->
-      <SocialLoginPanel
-        v-model="socialBindingContext"
-        v-model:loading="socialLoginLoading"
-        :disabled="authLoading"
-        :redirect-url="redirectUrl"
-        :social-bind="Boolean(pageProps.socialBind)"
-        :validate-tenant="validateTenant"
-      />
-      <!-- 创建账号 -->
-      <view v-if="!socialBindingContext && !authLoading" class="mt-40rpx flex items-center justify-center">
-        <text class="text-28rpx text-[#666]">还没有账号？</text>
-        <text class="text-28rpx text-[#1890ff]" @click="goToRegister">
-          创建账号
-        </text>
+      <view class="form-container">
+        <view class="input-item">
+          <wd-icon name="user" size="20px" color="#54816b" />
+          <wd-input
+            v-model="formData.username"
+            placeholder="请输入账号"
+            clearable
+            clear-trigger="focus"
+            :disabled="loading"
+            @confirm="handleLogin"
+          />
+        </view>
+        <view class="input-item">
+          <wd-icon name="lock" size="20px" color="#54816b" />
+          <wd-input
+            v-model="formData.password"
+            placeholder="请输入密码"
+            clearable
+            clear-trigger="focus"
+            show-password
+            confirm-type="go"
+            :disabled="loading"
+            @confirm="handleLogin"
+          />
+        </view>
+        <view v-if="tenantError" class="shop-login__error" role="alert">
+          <text>{{ tenantError }}</text>
+          <button class="shop-login__retry" @click="loadTenant">
+            重试
+          </button>
+        </view>
+        <wd-button
+          block
+          :disabled="loading || !tenantReady"
+          :loading="loading || initializing"
+          type="primary"
+          @click="handleLogin"
+        >
+          登录
+        </wd-button>
       </view>
     </view>
+    <Verify
+      v-if="captchaEnabled && captchaMounted"
+      ref="verifyRef"
+      captcha-type="blockPuzzle"
+      explain="向右滑动完成验证"
+      :img-size="{ width: '300px', height: '150px' }"
+      mode="pop"
+      @success="verifySuccess"
+    />
   </view>
 </template>
 
 <script lang="ts" setup>
-import type { SocialLoginBindingContext } from '@/utils/social-login'
 import { useToast } from '@wot-ui/ui/components/wd-toast'
-import { computed, reactive, ref } from 'vue'
-import {
-  CODE_LOGIN_PAGE,
-  FORGET_PASSWORD_PAGE,
-  REGISTER_PAGE,
-} from '@/router/config'
+import { nextTick, reactive, ref } from 'vue'
 import { useTokenStore } from '@/store/token'
 import { ensureDecodeURIComponent, redirectAfterLogin } from '@/utils'
-import Header from './components/header.vue'
-import SocialLoginPanel from './components/social-login-panel.vue'
-import TenantPicker from './components/tenant-picker.vue'
 import Verify from './components/verifition/verify.vue'
+import { useLoginTenant } from './useLoginTenant'
 
-defineOptions({
-  name: 'LoginPage',
-  style: {
-    navigationStyle: 'custom',
-  },
-})
-
-const pageProps = defineProps<{
-  redirect?: string
-  socialBind?: string
-}>()
-
-definePage({
-  style: {
-    navigationStyle: 'custom',
-  },
-})
-
+defineOptions({ name: 'LoginPage' })
+const props = defineProps<{ redirect?: string }>()
+definePage({ style: { navigationStyle: 'custom' } })
+const title = import.meta.env.VITE_APP_TITLE || '团团园园杂货铺'
 const toast = useToast()
-const loading = ref(false) // 表单提交状态
-const redirectUrl = ref(pageProps.redirect ? ensureDecodeURIComponent(pageProps.redirect) : undefined) // 重定向地址
-const tenantPickerRef = ref<InstanceType<typeof TenantPicker>>() // 租户选择器引用
-const captchaEnabled = import.meta.env.VITE_APP_CAPTCHA_ENABLE === 'true' // 验证码开关
-const verifyRef = ref()
-const captchaType = ref('blockPuzzle') // 滑块验证码 blockPuzzle|clickWord
+const loading = ref(false)
+const captchaEnabled = import.meta.env.VITE_APP_CAPTCHA_ENABLE === 'true'
+const captchaMounted = ref(false)
+const verifyRef = ref<InstanceType<typeof Verify>>()
+const { initializing, ready: tenantReady, error: tenantError, loadTenant } = useLoginTenant()
+const formData = reactive({ username: '', password: '', captchaVerification: '' })
 
-const formData = reactive({
-  username: import.meta.env.DEV ? import.meta.env.VITE_APP_DEFAULT_LOGIN_USERNAME || '' : '',
-  password: import.meta.env.DEV ? import.meta.env.VITE_APP_DEFAULT_LOGIN_PASSWORD || '' : '',
-  captchaVerification: '', // 验证码校验值
-}) // 表单数据
-const socialBindingContext = ref<SocialLoginBindingContext>() // 待绑定的三方授权上下文
-const socialLoginLoading = ref(false) // 三方登录进行状态
-const authLoading = computed(() => loading.value || socialLoginLoading.value) // 任一登录流程进行状态
-const socialAuth = computed(() => { // 待绑定的三方授权参数
-  const context = socialBindingContext.value
-  return context
-    ? {
-        socialType: context.socialType,
-        socialCode: context.socialCode,
-        socialState: context.socialState,
-      }
-    : undefined
-})
-
-/** 获取验证码 */
-async function getCode() {
-  // 情况一，未开启：则直接登录
-  if (!captchaEnabled) {
-    await verifySuccess({})
-  } else {
-    // 情况二，已开启：则展示验证码；只有完成验证码的情况，才进行登录
-    // 弹出验证码
-    verifyRef.value.show()
-  }
-}
-
-/** 登录处理 */
 async function handleLogin() {
-  if (authLoading.value) {
+  if (loading.value || !tenantReady.value)
     return
-  }
-  if (!validateTenant()) {
-    return
-  }
-  if (!formData.username) {
-    toast.warning('请输入用户名')
+  if (!formData.username.trim()) {
+    toast.warning('请输入账号')
     return
   }
   if (!formData.password) {
     toast.warning('请输入密码')
     return
   }
-  await getCode()
+  if (captchaEnabled) {
+    captchaMounted.value = true
+    await nextTick()
+    verifyRef.value?.show()
+  } else {
+    await verifySuccess({})
+  }
 }
 
-/** 验证成功后登录 */
-async function verifySuccess(params: any) {
+async function verifySuccess(params: { captchaVerification?: string }) {
+  if (loading.value || !tenantReady.value)
+    return
   loading.value = true
   try {
-    // 调用登录接口
     const tokenStore = useTokenStore()
-    formData.captchaVerification = params.captchaVerification
     await tokenStore.login({
       type: 'username',
-      ...formData,
-      ...socialAuth.value,
+      username: formData.username.trim(),
+      password: formData.password,
+      captchaVerification: params.captchaVerification,
     })
-    // 处理跳转
-    redirectAfterLogin(socialBindingContext.value?.redirect || redirectUrl.value)
+    redirectAfterLogin(props.redirect ? ensureDecodeURIComponent(props.redirect) : undefined)
   } finally {
     loading.value = false
   }
 }
-
-/** 跳转到注册页面 */
-function goToRegister() {
-  uni.navigateTo({ url: REGISTER_PAGE })
-}
-
-/** 跳转到验证码登录 */
-function goToSmsLogin() {
-  uni.navigateTo({ url: CODE_LOGIN_PAGE })
-}
-
-/** 跳转到忘记密码 */
-function goToForgetPassword() {
-  uni.navigateTo({ url: FORGET_PASSWORD_PAGE })
-}
-
-/** 校验当前租户 */
-function validateTenant() {
-  return Boolean(tenantPickerRef.value?.validate())
-}
 </script>
 
 <style lang="scss" scoped>
-@import './styles/auth.scss';
+.shop-login {
+  --wot-button-primary-bg: #2e644b;
+  --wot-button-primary-bg-active: #214e39;
+  display: flex;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background: #f4f6f2;
+  box-sizing: border-box;
+
+  &__card {
+    width: 100%;
+    max-width: 420px;
+    padding: 34px 32px 32px;
+    border: 1px solid #e7ebe3;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 12px 48px rgb(38 65 45 / 5%);
+    box-sizing: border-box;
+  }
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    margin-bottom: 30px;
+  }
+
+  &__logo {
+    width: 84px;
+    height: 84px;
+    margin-bottom: 18px;
+    flex-shrink: 0;
+  }
+
+  &__title {
+    color: #284333;
+    font-size: 21px;
+    font-weight: 600;
+    line-height: 1.5;
+    text-align: center;
+  }
+
+  .form-container {
+    width: 100%;
+  }
+
+  .input-item {
+    display: flex;
+    min-height: 52px;
+    align-items: center;
+    padding: 0 14px;
+    margin-bottom: 16px;
+    border: 1px solid #e2e8df;
+    border-radius: 8px;
+    background: #f8faf6;
+
+    :deep(.wd-input) {
+      min-width: 0;
+      flex: 1;
+      margin-left: 10px;
+      background: transparent;
+    }
+
+    :deep(.wd-input__inner) {
+      font-size: 15px;
+    }
+  }
+
+  :deep(.wd-button) {
+    height: 46px;
+    margin-top: 8px;
+    border-radius: 8px;
+    font-size: 15px;
+  }
+
+  &__error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 14px;
+    color: #9b5c4c;
+    font-size: 12px;
+  }
+
+  &__retry {
+    margin: 0;
+    padding: 4px 8px;
+    border: 0;
+    background: transparent;
+    color: #2e644b;
+    font-size: 12px;
+    line-height: 1.6;
+    &::after {
+      border: 0;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .shop-login {
+    padding: 24px 16px;
+    &__card {
+      padding: 28px 24px;
+    }
+    &__title {
+      font-size: 20px;
+    }
+  }
+}
 </style>

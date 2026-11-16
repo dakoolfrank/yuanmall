@@ -187,7 +187,16 @@ function init() {
 watch(type, () => {
   init()
 })
+// #ifdef H5
+let mouseBlock
+// #endif
 onMounted(() => {
+  // #ifdef H5
+  mouseBlock = proxy?.$el?.querySelector?.('.verify-move-block')
+  mouseBlock?.addEventListener('mousedown', start)
+  document.addEventListener('mousemove', move)
+  document.addEventListener('mouseup', end)
+  // #endif
   // 禁止拖拽
   init()
   if (!proxy?.$el) {
@@ -198,6 +207,11 @@ onMounted(() => {
   }
 })
 onBeforeUnmount(() => {
+  // #ifdef H5
+  mouseBlock?.removeEventListener('mousedown', start)
+  document.removeEventListener('mousemove', move)
+  document.removeEventListener('mouseup', end)
+  // #endif
   unmounted = true
   timers.forEach(timer => clearTimeout(timer))
   timers.clear()

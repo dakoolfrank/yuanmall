@@ -2,7 +2,7 @@
   <view class="yd-page-container yd-page-container-paging">
     <!-- 顶部导航栏 -->
     <wd-navbar
-      title="运费模板"
+      title="快递运费"
       left-arrow placeholder safe-area-inset-top fixed
       @click-left="handleBack"
     />

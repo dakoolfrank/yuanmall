@@ -16,6 +16,15 @@ public class AppTradeOrderDetailRespVO {
     @Schema(description = "订单编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1024")
     private Long id;
 
+    /** 付款方式：1 在线支付；2 见面付款。 */
+    private Integer paymentMethod;
+    /** 线下实收方式：cash / scan，不代表微信支付通道。 */
+    private String receiptMethod;
+    private Integer receiptAmount;
+    private LocalDateTime receiptTime;
+
+
+
     @Schema(description = "订单流水号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1146347329394184195")
     private String no;
 

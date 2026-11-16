@@ -21,8 +21,7 @@ public class ProductCategorySaveReqVO {
     @NotBlank(message = "分类名称不能为空")
     private String name;
 
-    @Schema(description = "移动端分类图", requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotBlank(message = "移动端分类图不能为空")
+    @Schema(description = "分类图片（可选，店铺分类维护不使用）")
     private String picUrl;
 
     @Schema(description = "分类排序", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")

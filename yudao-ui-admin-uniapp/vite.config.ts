@@ -46,6 +46,22 @@ function YudaoUiResolver(): ComponentResolver {
   }
 }
 
+/** H5 needs explicit resolvers when UniComponents replaces native easycom. */
+function H5UiResolver(): ComponentResolver {
+  return {
+    type: 'component',
+    resolve: (name: string) => {
+      const component = kebabCase(name)
+      if (/^Wd[A-Z]/.test(name)) {
+        return { name, from: `@wot-ui/ui/components/${component}/${component}.vue` }
+      }
+      if (name.startsWith('ZPaging') && !['ZPagingRefresh', 'ZPagingLoadMore'].includes(name)) {
+        return { name, from: `z-paging/components/${component}/${component}.vue` }
+      }
+    },
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
   // @see https://unocss.dev/
@@ -80,21 +96,32 @@ export default defineConfig(({ command, mode }) => {
     VITE_COPY_NATIVE_RES_ENABLE,
   } = env
   const { WECHAT_DEVTOOLS_CLI_PATH } = localEnv
+  const serverDev = mode === 'serverdev' && UNI_PLATFORM === 'h5'
 
   return defineConfig({
     envDir: './env', // 自定义env目录
     base: VITE_APP_PUBLIC_BASE,
     plugins: [
+      serverDev && {
+        name: 'serverdev-external-vendor-maps',
+        enforce: 'post',
+        transform(code, id) {
+          const file = id.split('?')[0]
+          if (file.includes('/node_modules/.vite/deps/') && file.endsWith('.js')) {
+            return { code: `${code}\n//# sourceMappingURL=${path.basename(file)}.map`, map: { mappings: '' } }
+          }
+        },
+      },
       // UniXXX 需要在 Uni 之前引入
       UniLayouts(),
       UniPlatform(),
       UniManifest(),
       UniComponents({ // 仅自动导入本地组件；Wot UI 与 z-paging 由 pages.config.ts 的 easycom 解析
-        resolvers: [YudaoUiResolver()],
+        resolvers: [YudaoUiResolver(), ...(UNI_PLATFORM === 'h5' ? [H5UiResolver()] : [])],
         extensions: ['vue'],
         deep: true, // 是否递归扫描子目录，
         directoryAsNamespace: false, // 是否把目录名作为命名空间前缀，true 时组件名为 目录名+组件名，
-        dts: 'src/types/local-components.d.ts', // 仅生成项目本地组件类型，避免拉入第三方 Vue 源码
+        dts: UNI_PLATFORM === 'h5' ? false : 'src/types/local-components.d.ts', // 仅生成项目本地组件类型，避免拉入第三方 Vue 源码
       }),
       UniPages({
         exclude: ['**/components/**/**.*', '**/sections/**/**.*'],
@@ -194,11 +221,17 @@ export default defineConfig(({ command, mode }) => {
       }),
       // 自动打开开发者工具插件 (必须修改 .env 文件中的 VITE_WX_APPID)
       // 上传或 CI 场景可通过 SKIP_OPEN_DEVTOOLS=true 跳过
-      SKIP_OPEN_DEVTOOLS !== 'true' && openDevTools({
+      UNI_PLATFORM === 'mp-weixin' && SKIP_OPEN_DEVTOOLS !== 'true' && openDevTools({
         mode,
         wechatDevtoolsCliPath: WECHAT_DEVTOOLS_CLI_PATH,
       }),
     ],
+    optimizeDeps: serverDev
+      ? {
+          // Keep uni-app's Vue/router exclusions; bundle only safe standalone dependencies.
+          include: ['@vue/devtools-api', '@uni-helper/uni-env', '@wot-ui/ui/components/wd-toast', 'crypto-js', 'jsencrypt', 'pinia-plugin-persistedstate', 'dayjs'],
+        }
+      : undefined,
     define: {
       __VITE_APP_PROXY__: JSON.stringify(VITE_APP_PROXY_ENABLE),
     },
@@ -227,8 +260,11 @@ export default defineConfig(({ command, mode }) => {
       },
     },
     server: {
-      host: '0.0.0.0',
-      hmr: true,
+      host: serverDev ? '127.0.0.1' : '0.0.0.0',
+      strictPort: serverDev,
+      hmr: serverDev ? { protocol: 'wss', host: 'mall.nexrur.ai', clientPort: 443, path: '/__vite_hmr' } : true,
+      fs: { strict: true, allow: [process.cwd()], deny: ['.env', '.env.*', '**/env/.env*', '*.{crt,pem}', '**/.git/**'] },
+      warmup: serverDev ? { clientFiles: ['./src/main.ts', './src/pages-core/auth/login.vue', './src/pages-mall/product/spu/index.vue', './src/pages-mall/trade/order/index.vue'] } : undefined,
       port: Number.parseInt(VITE_APP_PORT, 10),
       // 仅 H5 端生效，其他端不生效（其他端走build，不走devServer)
       proxy: JSON.parse(VITE_APP_PROXY_ENABLE)

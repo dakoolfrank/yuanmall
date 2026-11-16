@@ -5,20 +5,32 @@
       title="商品管理"
       left-arrow placeholder safe-area-inset-top fixed
       @click-left="handleBack"
-    />
+    >
+      <template #right>
+        <button v-if="hasAccessByCodes(['product:category:query'])" class="category-entry" @click="openCategories">
+          商品类别
+        </button>
+      </template>
+    </wd-navbar>
 
     <!-- 搜索组件 -->
     <SearchForm :initial-category-id="categoryId" @search="handleQuery" @reset="handleReset" />
 
-    <!-- 商品状态 tab -->
-    <view class="bg-white">
-      <wd-tabs v-model="tabIndex" slidable="always" @change="handleTabChange">
-        <wd-tab
-          v-for="tab in SPU_TABS"
-          :key="tab.value"
-          :title="`${tab.label}(${tabCounts[tab.value] ?? 0})`"
-        />
-      </wd-tabs>
+    <view class="product-filters">
+      <view class="product-filters__row">
+        <button v-for="tab in STATUS_TABS" :key="tab.value" class="filter-button" :class="{ active: statusFilter === tab.value && !recycleMode }" @click="selectStatus(tab.value)">
+          {{ tab.label }}
+        </button>
+        <button class="recycle-button" :class="{ active: recycleMode }" @click="openRecycle">
+          回收站
+        </button>
+      </view>
+      <view v-if="!recycleMode" class="product-filters__row stock-filters">
+        <text class="stock-label">库存</text>
+        <button v-for="tab in STOCK_TABS" :key="tab.value" class="filter-button" :class="{ active: stockFilter === tab.value }" @click="selectStock(tab.value)">
+          {{ tab.label }}
+        </button>
+      </view>
     </view>
 
     <!-- 分页列表 -->
@@ -34,11 +46,11 @@
       empty-view-text="暂无商品数据"
       @query="queryList"
     >
-      <view class="p-24rpx">
+      <view class="product-list">
         <view
           v-for="item in list"
           :key="item.id"
-          class="mb-24rpx overflow-hidden rounded-12rpx bg-white p-24rpx shadow-sm"
+          class="product-card"
           @click="handleDetail(item)"
         >
           <view class="flex items-start gap-20rpx">
@@ -50,14 +62,12 @@
                 <view class="min-w-0 flex-1 truncate text-32rpx text-[#333] font-semibold">
                   {{ item.name || '-' }}
                 </view>
-                <dict-tag v-if="item.status != null" :type="DICT_TYPE.PRODUCT_SPU_STATUS" :value="item.status" />
               </view>
               <view class="mb-12rpx text-34rpx text-[#fa8c16] font-semibold">
                 {{ formatDisplayMoney(item.price) }}
               </view>
-              <view class="flex items-center gap-24rpx text-26rpx text-[#666]">
-                <text>库存：{{ item.stock ?? '-' }}</text>
-                <text>销量：{{ item.salesCount ?? '-' }}</text>
+              <view class="product-status" :class="{ 'product-status--empty': item.stock === 0 }">
+                {{ statusText(item.status) }} · {{ stockText(item.stock) }}
               </view>
             </view>
           </view>
@@ -81,12 +91,11 @@ import { parseId } from '@/utils/id'
 
 import type { ProductSpu } from '@/api/mall/product/spu'
 import { onUnload } from '@dcloudio/uni-app'
-import { computed, onMounted, ref } from 'vue'
-import { getProductSpuPage, getProductSpuTabsCount } from '@/api/mall/product/spu'
+import { onMounted, ref } from 'vue'
+import { getProductSpuPage } from '@/api/mall/product/spu'
 import { useAccess } from '@/hooks/useAccess'
 import { formatDisplayMoney } from '@/utils/format'
 import { navigateBackPlus } from '@/utils'
-import { DICT_TYPE } from '@/utils/constants'
 import SearchForm from './components/search-form.vue'
 
 const props = defineProps<{ categoryId?: number | any }>()
@@ -98,52 +107,119 @@ definePage({
   },
 })
 
-const SPU_TABS = [ // 商品状态 tab（value 即后端 tabType；count 由 get-count 返回）
-  { label: '出售中', value: 0 },
-  { label: '仓库中', value: 1 },
-  { label: '已售罄', value: 2 },
-  { label: '警戒库存', value: 3 },
-  { label: '回收站', value: 4 },
+const STATUS_TABS = [
+  { label: '全部', value: 'all' },
+  { label: '已上架', value: 'listed' },
+  { label: '已下架', value: 'unlisted' },
 ]
+const STOCK_TABS = [
+  { label: '全部', value: 'all' },
+  { label: '缺货', value: 'empty' },
+  { label: '不足（1–10件）', value: 'low' },
+]
+const statusFilter = ref('all')
+const stockFilter = ref('all')
+const recycleMode = ref(false)
+let generation = 0
+let sourcePage = 1
+let sourceHasMore = true
+let buffer: ProductSpu[] = []
+
+function statusText(status?: number) {
+  return status === 1 ? '已上架' : status === 0 ? '已下架' : status === -1 ? '回收站' : '状态未知'
+}
+function stockText(stock?: number) {
+  if (stock == null)
+    return '库存未知'
+  if (stock === 0)
+    return '缺货'
+  return `剩余 ${stock} 件${stock <= 10 ? ' · 库存不足' : ''}`
+}
+function selectStatus(value: string) {
+  statusFilter.value = value
+  recycleMode.value = false
+  reload()
+}
+function selectStock(value: string) {
+  stockFilter.value = value
+  reload()
+}
+function openRecycle() {
+  recycleMode.value = true
+  reload()
+}
 
 const { hasAccessByCodes } = useAccess()
 const list = ref<ProductSpu[]>([]) // 列表数据
 const pagingRef = ref<any>() // 分页组件引用
-const tabIndex = ref(0) // 当前 tab 下标
-const tabCounts = ref<Record<number, number>>({}) // 各 tab 商品数量（key 为 tabType）
 const queryParams = ref<Record<string, any>>({}) // 查询参数（搜索表单部分：name）
 const categoryId = ref<number | undefined>(props.categoryId ? parseId(props.categoryId) : undefined) // 分类筛选（路由深链 + 搜索表单共用）
-const tabType = computed(() => SPU_TABS[tabIndex.value].value) // 当前 tabType
+
+function openCategories() {
+  uni.navigateTo({ url: '/pages-mall/product/category/index' })
+}
 
 /** 返回上一页 */
 function handleBack() {
   navigateBackPlus()
 }
 
-/** 查询商品列表 */
+/** 沿用后端分页，缓冲筛选后的结果，不在当前一页上过滤后假报总数。 */
 async function queryList(pageNo: number, pageSize: number) {
-  try {
-    const data = await getProductSpuPage({
-      ...queryParams.value,
-      tabType: tabType.value,
-      categoryId: categoryId.value,
-      pageNo,
-      pageSize,
-    })
-    pagingRef.value?.completeByTotal(data.list, data.total)
-  } catch {
-    pagingRef.value?.complete(false)
+  if (pageNo === 1) {
+    generation++
+    sourcePage = 1
+    sourceHasMore = true
+    buffer = []
   }
-}
-
-/** 加载各 tab 数量（带上当前筛选条件，与列表口径一致） */
-async function loadTabCounts() {
-  const res = await getProductSpuTabsCount({ ...queryParams.value, categoryId: categoryId.value })
-  const counts: Record<number, number> = {}
-  Object.keys(res || {}).forEach((key) => {
-    counts[Number(key)] = Number(res[key]) || 0
-  })
-  tabCounts.value = counts
+  const current = generation
+  const recycle = recycleMode.value
+  const status = statusFilter.value
+  const stock = stockFilter.value
+  const tabType = recycle ? 4 : stock === 'empty' ? 2 : stock === 'low' ? 3 : status === 'listed' ? 0 : status === 'unlisted' ? 1 : undefined
+  let nextPage = sourcePage
+  let more = sourceHasMore
+  const pending = [...buffer]
+  try {
+    while (pending.length < pageSize && more) {
+      const data = await getProductSpuPage({
+        ...queryParams.value,
+        tabType,
+        categoryId: categoryId.value,
+        pageNo: nextPage,
+        pageSize: 100,
+      })
+      if (current !== generation)
+        return
+      pending.push(...data.list.filter((item) => {
+        if (recycle)
+          return item.status === -1
+        if (item.status !== 0 && item.status !== 1)
+          return false
+        if (status === 'listed' && item.status !== 1)
+          return false
+        if (status === 'unlisted' && item.status !== 0)
+          return false
+        if (stock === 'empty')
+          return item.stock === 0
+        if (stock === 'low')
+          return item.stock != null && item.stock > 0 && item.stock <= 10
+        return true
+      }))
+      more = data.list.length > 0 && nextPage * 100 < data.total
+      nextPage++
+    }
+    if (current !== generation)
+      return
+    const page = pending.splice(0, pageSize)
+    sourcePage = nextPage
+    sourceHasMore = more
+    buffer = pending
+    pagingRef.value?.completeByNoMore(page, !more && pending.length === 0)
+  } catch {
+    if (current === generation)
+      pagingRef.value?.complete(false)
+  }
 }
 
 /** 搜索按钮操作 */
@@ -160,15 +236,12 @@ function handleReset() {
   handleQuery()
 }
 
-/** tab 切换 */
-function handleTabChange({ index }: { index: number }) {
-  tabIndex.value = index
-  reload()
-}
-
-/** 重新加载（同时刷新数量） */
+/** 筛选、搜索及业务变更后从第一页重新读取。 */
 function reload() {
-  loadTabCounts()
+  generation++
+  sourcePage = 1
+  sourceHasMore = true
+  buffer = []
   pagingRef.value?.reload()
 }
 
@@ -184,12 +257,100 @@ function handleDetail(item: ProductSpu) {
 
 /** 初始化 */
 onMounted(() => {
-  loadTabCounts()
   uni.$on('mall:product-spu:reload', reload)
 })
 
 /** 卸载 */
 onUnload(() => {
+  generation++
   uni.$off('mall:product-spu:reload', reload)
 })
 </script>
+
+<style scoped>
+.product-filters {
+  background: white;
+  padding: 8px 16px 12px;
+}
+.product-filters__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.stock-filters {
+  margin-top: 12px;
+}
+.filter-button,
+.recycle-button {
+  margin: 0;
+  padding: 7px 12px;
+  background: transparent;
+  color: #69746c;
+  font-size: 15px;
+  line-height: 1.5;
+  border-radius: 8px;
+}
+.filter-button::after,
+.recycle-button::after {
+  border: none;
+}
+.filter-button.active {
+  background: #e9f0e8;
+  color: #2e644b;
+  font-weight: 600;
+}
+.recycle-button {
+  margin-left: auto;
+  font-size: 13px;
+}
+.recycle-button.active {
+  color: #2e644b;
+  text-decoration: underline;
+}
+.stock-label {
+  color: #89918a;
+  font-size: 13px;
+  margin-right: 2px;
+}
+.stock-filters .filter-button {
+  font-size: 13px;
+  padding: 5px 10px;
+}
+.product-list {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px 16px 88px;
+  box-sizing: border-box;
+}
+.product-card {
+  margin-bottom: 12px;
+  border-radius: 12px;
+  background: white;
+  padding: 16px;
+}
+.product-status {
+  margin-top: 8px;
+  color: #68766b;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.product-status--empty {
+  color: #b75936;
+}
+</style>
+
+<style scoped>
+.category-entry {
+  padding: 0 4px;
+  margin: 0;
+  background: transparent;
+  color: #2e644b;
+  font-size: 14px;
+  line-height: 32px;
+}
+.category-entry::after {
+  border: none;
+}
+</style>

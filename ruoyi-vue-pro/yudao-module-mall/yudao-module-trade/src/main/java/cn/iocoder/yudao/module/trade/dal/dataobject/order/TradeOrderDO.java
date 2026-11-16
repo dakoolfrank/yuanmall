@@ -47,6 +47,16 @@ public class TradeOrderDO extends BaseDO {
      * 订单编号，主键自增
      */
     private Long id;
+
+    /** 付款方式：1 在线支付；2 见面付款。 */
+    private Integer paymentMethod;
+    /** 线下实收方式：cash / scan，不代表微信支付通道。 */
+    private String receiptMethod;
+    private Integer receiptAmount;
+    private Long receiptOperatorId;
+    private LocalDateTime receiptTime;
+
+
     /**
      * 订单流水号
      *

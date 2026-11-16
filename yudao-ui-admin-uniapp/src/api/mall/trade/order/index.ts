@@ -52,6 +52,11 @@ export interface TradeOrder {
   cancelType?: number
   remark?: string
   payOrderId?: number
+  paymentMethod?: number
+  receiptMethod?: 'cash' | 'scan'
+  receiptAmount?: number
+  receiptOperatorId?: number
+  receiptTime?: string
   payStatus?: boolean
   payTime?: string
   payChannelCode?: string
@@ -159,4 +164,15 @@ export function getTradeOrderByPickUpVerifyCode(pickUpVerifyCode: string) {
   return http.get<TradeOrder>('/trade/order/get-by-pick-up-verify-code', {
     pickUpVerifyCode,
   })
+}
+
+/** 店铺自己送：发货与收款分别记录。 */
+export function startStoreDelivery(id: number) {
+  return http.put<boolean>(`/trade/order/store-delivery?id=${id}`)
+}
+export function confirmOfflinePayment(data: { id: number, amount: number, method: 'cash' | 'scan' }) {
+  return http.put<boolean>('/trade/order/confirm-offline-payment', data)
+}
+export function completeStoreDelivery(id: number) {
+  return http.put<boolean>(`/trade/order/store-receive?id=${id}`)
 }

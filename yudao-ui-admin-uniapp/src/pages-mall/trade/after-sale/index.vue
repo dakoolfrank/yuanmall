@@ -51,7 +51,7 @@
           </view>
           <view class="flex items-center text-28rpx text-[#666]">
             <text class="mr-8rpx shrink-0 text-[#999]">申请时间：</text>
-            <text>{{ formatDateTime(item.createTime) || '-' }}</text>
+            <text>{{ formatBeijingDateTime(item.createTime) || '-' }}</text>
           </view>
         </view>
       </view>
@@ -68,7 +68,7 @@ import { getDictLabel } from '@/hooks/useDict'
 import { formatDisplayMoney } from '@/utils/format'
 import { navigateBackPlus } from '@/utils'
 import { DICT_TYPE } from '@/utils/constants'
-import { formatDateTime } from '@/utils/date'
+import { formatBeijingDateTime } from '@/utils/date'
 import SearchForm from './components/search-form.vue'
 
 definePage({

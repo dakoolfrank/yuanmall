@@ -1,5 +1,7 @@
 # Docker Compose 部署（单体版）
 
+> 腾讯云商城服务器的实际部署与 dev/prod 切换见总仓库 [DEPLOY.md](../../../DEPLOY.md) 和 [AGENTS.md](../../../AGENTS.md)。本页是独立的通用体验方案，不是当前服务器的切换入口；不要据此重复初始化现有数据库或同时启动另一套商城服务。
+
 目标：用 Docker Compose V2 快速搭建一套可登录的体验环境，了解各组件之间的依赖关系。
 
 包含：`yudao-server` 后端、前端 Nginx、MySQL、Redis。仅用于入门体验与测试，不是生产高可用方案。

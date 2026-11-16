@@ -438,7 +438,7 @@ public class SocialClientServiceImpl implements SocialClientService {
      * @return WxMpService 对象
      */
     @VisibleForTesting
-    WxMaService getWxMaService(Integer userType) {
+    public WxMaService getWxMaService(Integer userType) {
         // 第一步，查询 DB 的配置项，获得对应的 WxMaService 对象
         SocialClientDO client = socialClientMapper.selectBySocialTypeAndUserType(
                 SocialTypeEnum.WECHAT_MINI_PROGRAM.getType(), userType);

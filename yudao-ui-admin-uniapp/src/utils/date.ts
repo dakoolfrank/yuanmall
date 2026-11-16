@@ -1,4 +1,7 @@
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+
+dayjs.extend(utc)
 
 type FormatDate = Date | dayjs.Dayjs | number | string
 
@@ -39,6 +42,23 @@ export function formatOptionalDate(time?: FormatDate, format: Format = 'YYYY-MM-
 /** 格式化日期时间 */
 export function formatDateTime(time?: FormatDate) {
   return formatDate(time, 'YYYY-MM-DD HH:mm:ss')
+}
+
+/** 商城业务时间统一显示北京时间；无时区的日期文本保留原钟面时间。 */
+export function formatBeijingDateTime(time?: FormatDate) {
+  if (time == null || time === '') {
+    return ''
+  }
+  let value = time
+  if (typeof value === 'string') {
+    value = value.trim()
+    if (/^-?\d+$/.test(value)) {
+      value = Number(value)
+    } else if (!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(value)) {
+      return formatDateTime(value)
+    }
+  }
+  return formatDate(dayjs(value).utcOffset(8), 'YYYY-MM-DD HH:mm:ss')
 }
 
 /** 格式化可选日期时间 */

@@ -1,0 +1,11 @@
+-- 寄件和快递合作配置，按租户隔离；不保存微信 AppSecret、商户私钥。
+CREATE TABLE IF NOT EXISTS trade_delivery_wechat_config (
+ id BIGINT NOT NULL PRIMARY KEY,
+ sender_name VARCHAR(40) NOT NULL DEFAULT '', sender_mobile VARCHAR(30) NOT NULL DEFAULT '',
+ sender_province VARCHAR(50) NOT NULL DEFAULT '', sender_city VARCHAR(50) NOT NULL DEFAULT '',
+ sender_district VARCHAR(50) NOT NULL DEFAULT '', sender_address VARCHAR(255) NOT NULL DEFAULT '',
+ delivery_id VARCHAR(30) NOT NULL DEFAULT '', biz_id VARCHAR(100) NOT NULL DEFAULT '', service_type INT NULL,
+ creator VARCHAR(64) DEFAULT '', create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updater VARCHAR(64) DEFAULT '', update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ deleted BIT(1) NOT NULL DEFAULT b'0', tenant_id BIGINT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='微信物流寄件设置';

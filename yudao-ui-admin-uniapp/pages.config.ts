@@ -1,10 +1,10 @@
 import { defineUniPages } from '@uni-helper/vite-plugin-uni-pages'
-import { tabBar } from './src/tabbar/config'
+import { tabBar, tabbarCacheEnable } from './src/tabbar/config'
 
 export default defineUniPages({
   globalStyle: {
     navigationStyle: 'default',
-    navigationBarTitleText: '芋道管理系统',
+    navigationBarTitleText: '团团园园杂货铺',
     navigationBarBackgroundColor: '#f8f8f8',
     navigationBarTextStyle: 'black',
     backgroundColor: '#FFFFFF',
@@ -20,5 +20,5 @@ export default defineUniPages({
     },
   },
   // tabbar 的配置统一在 “./src/tabbar/config.ts” 文件中
-  tabBar: tabBar as any,
+  ...(tabbarCacheEnable ? { tabBar: tabBar as any } : {}),
 })

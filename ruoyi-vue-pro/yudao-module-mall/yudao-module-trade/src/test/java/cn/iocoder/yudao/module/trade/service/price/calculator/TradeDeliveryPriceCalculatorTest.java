@@ -55,6 +55,9 @@ public class TradeDeliveryPriceCalculatorTest extends BaseMockitoUnitTest {
     @Mock
     private TradeConfigService tradeConfigService;
 
+    @Mock
+    private cn.iocoder.yudao.module.trade.framework.order.config.TradeOrderProperties orderProperties;
+
     private TradePriceCalculateReqBO reqBO;
     private TradePriceCalculateRespBO resultBO;
 
@@ -420,4 +423,25 @@ public class TradeDeliveryPriceCalculatorTest extends BaseMockitoUnitTest {
                 .thenReturn(MapUtil.of(1L, template));
     }
 
+
+    @Test
+    public void storeDeliveryIsFreeAndDoesNotUseExpressTemplate() {
+        reqBO.setDeliveryType(3);
+        when(orderProperties.getStoreDeliveryEnabled()).thenReturn(true);
+        when(addressApi.getAddress(eq(reqBO.getAddressId()), eq(reqBO.getUserId())))
+                .thenReturn(new MemberAddressRespDTO().setId(reqBO.getAddressId()));
+        resultBO.getItems().forEach(item -> item.setDeliveryTypes(java.util.Arrays.asList(1)).setDeliveryPrice(5000000));
+        calculator.calculate(reqBO, resultBO);
+        assertThat(resultBO.getPrice().getDeliveryPrice()).isEqualTo(0);
+        resultBO.getItems().forEach(item -> assertThat(item.getDeliveryPrice()).isEqualTo(0));
+        org.mockito.Mockito.verifyNoInteractions(deliveryExpressTemplateService);
+    }
+
+    @Test
+    public void storeDeliveryDisabledCannotSilentlyBecomeFree() {
+        reqBO.setDeliveryType(3);
+        when(orderProperties.getStoreDeliveryEnabled()).thenReturn(false);
+        assertServiceException(() -> calculator.calculate(reqBO, resultBO),
+                cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.STORE_DELIVERY_DISABLED);
+    }
 }

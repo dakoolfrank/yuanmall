@@ -9,34 +9,27 @@
 
     <!-- 表单区域 -->
     <view>
+      <view v-if="loadFailed" class="category-load-error">
+        分类加载失败，请重试后再保存。<button @click="getDetail">
+          重试
+        </button>
+      </view>
       <wd-form ref="formRef" :model="formData" :schema="formSchema">
         <wd-cell-group border>
-          <yd-form-picker
-            v-model="formData.parentId"
-            label="上级分类"
-            label-width="220rpx"
-            prop="parentId"
-            :columns="parentOptions"
-            label-key="name"
-            value-key="id"
-          />
           <wd-form-item title="分类名称" title-width="220rpx" prop="name">
             <wd-input v-model="formData.name" clearable placeholder="请输入分类名称" />
-          </wd-form-item>
-          <wd-form-item title="分类图片" title-width="220rpx" prop="picUrl">
-            <yd-upload-img v-model="formData.picUrl" />
           </wd-form-item>
           <wd-form-item title="分类排序" title-width="220rpx" prop="sort">
             <wd-input-number v-model="formData.sort" :min="0" />
           </wd-form-item>
-          <wd-form-item title="开启状态" title-width="220rpx" prop="status" center>
+          <wd-form-item title="状态" title-width="220rpx" prop="status" center>
             <wd-radio-group v-model="formData.status" type="button">
               <wd-radio
                 v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
                 :key="dict.value"
                 :value="dict.value"
               >
-                {{ dict.label }}
+                {{ dict.value === 0 ? '启用' : '停用' }}
               </wd-radio>
             </wd-radio-group>
           </wd-form-item>
@@ -49,7 +42,8 @@
       <wd-button
         type="primary"
         block
-        :loading="formLoading"
+        :loading="formLoading || detailLoading"
+        :disabled="detailLoading || loadFailed || formLoading"
         @click="handleSubmit"
       >
         保存
@@ -63,7 +57,7 @@ import type { FormInstance } from '@wot-ui/ui/components/wd-form/types'
 import type { ProductCategory } from '@/api/mall/product/category'
 import { useToast } from '@wot-ui/ui/components/wd-toast'
 import { computed, onMounted, ref } from 'vue'
-import { createProductCategory, getProductCategory, getProductCategoryList, updateProductCategory } from '@/api/mall/product/category'
+import { createProductCategory, getProductCategory, updateProductCategory } from '@/api/mall/product/category'
 import { getIntDictOptions } from '@/hooks/useDict'
 import { delay, navigateBackPlus } from '@/utils'
 import { CommonStatusEnum, DICT_TYPE } from '@/utils/constants'
@@ -82,8 +76,9 @@ definePage({
 
 const toast = useToast()
 const getTitle = computed(() => props.id ? '编辑分类' : '新增分类')
+const detailLoading = ref(true)
+const loadFailed = ref(false)
 const formLoading = ref(false) // 表单提交状态
-const parentOptions = ref<{ id?: number, name: string }[]>([]) // 上级分类选项（顶级分类 + 一级分类）
 const formData = ref<ProductCategory>({
   id: undefined,
   parentId: 0,
@@ -93,9 +88,7 @@ const formData = ref<ProductCategory>({
   status: CommonStatusEnum.ENABLE,
 }) // 表单数据
 const formSchema = createFormSchema({
-  parentId: [{ required: true, message: '上级分类不能为空' }],
   name: [{ required: true, message: '分类名称不能为空' }],
-  picUrl: [{ required: true, message: '分类图片不能为空' }],
   sort: [{ required: true, message: '分类排序不能为空' }],
   status: [{ required: true, message: '开启状态不能为空' }],
 })
@@ -106,22 +99,24 @@ function handleBack() {
   navigateBackPlus('/pages-mall/product/category/index')
 }
 
-/** 加载上级分类选项：顶级分类 + 一级分类 */
-async function loadOptions() {
-  const list = await getProductCategoryList({ parentId: 0 })
-  parentOptions.value = [{ id: 0, name: '顶级分类' }, ...list]
-}
-
 /** 加载详情 */
 async function getDetail() {
-  if (!props.id) {
-    return
+  detailLoading.value = true
+  loadFailed.value = false
+  try {
+    if (props.id)
+      formData.value = await getProductCategory(props.id)
+  } catch {
+    loadFailed.value = true
+  } finally {
+    detailLoading.value = false
   }
-  formData.value = await getProductCategory(props.id)
 }
 
 /** 提交表单 */
 async function handleSubmit() {
+  if (formLoading.value || detailLoading.value || loadFailed.value)
+    return
   const { valid } = await formRef.value.validate()
   if (!valid) {
     return
@@ -129,7 +124,7 @@ async function handleSubmit() {
 
   formLoading.value = true
   try {
-    const data = { ...formData.value }
+    const data = { ...formData.value, parentId: props.id ? formData.value.parentId : 0 }
     if (props.id) {
       await updateProductCategory(data)
       toast.success('修改成功')
@@ -139,6 +134,8 @@ async function handleSubmit() {
     }
     uni.$emit('mall:product-category:reload')
     delay(handleBack)
+  } catch {
+    toast.error('保存失败，已保留输入，请重试')
   } finally {
     formLoading.value = false
   }
@@ -146,7 +143,6 @@ async function handleSubmit() {
 
 /** 初始化 */
 onMounted(async () => {
-  await loadOptions()
   await getDetail()
 })
 </script>

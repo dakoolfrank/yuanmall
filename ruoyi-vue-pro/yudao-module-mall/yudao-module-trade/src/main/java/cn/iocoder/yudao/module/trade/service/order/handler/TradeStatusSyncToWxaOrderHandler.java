@@ -87,6 +87,8 @@ public class TradeStatusSyncToWxaOrderHandler implements TradeOrderHandler {
             reqDTO.setLogisticsType(SocialWxaOrderUploadShippingInfoReqDTO.LOGISTICS_TYPE_EXPRESS)
                     .setExpressCompany(expressService.getDeliveryExpress(order.getLogisticsId()).getCode())
                     .setLogisticsNo(order.getLogisticsNo());
+        } else if (DeliveryTypeEnum.STORE.getType().equals(order.getDeliveryType())) {
+            reqDTO.setLogisticsType(2); // 微信商家自配送
         } else if (DeliveryTypeEnum.PICK_UP.getType().equals(order.getDeliveryType())) {
             reqDTO.setLogisticsType(SocialWxaOrderUploadShippingInfoReqDTO.LOGISTICS_TYPE_PICK_UP);
         } else {

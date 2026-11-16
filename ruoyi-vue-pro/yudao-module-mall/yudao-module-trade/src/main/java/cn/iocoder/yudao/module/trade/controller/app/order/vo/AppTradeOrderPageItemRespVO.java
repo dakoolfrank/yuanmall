@@ -14,6 +14,8 @@ public class AppTradeOrderPageItemRespVO {
     @Schema(description = "订单编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1024")
     private Long id;
 
+    private Integer paymentMethod;
+
     @Schema(description = "订单流水号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1146347329394184195")
     private String no;
 

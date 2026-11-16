@@ -19,6 +19,9 @@ import java.time.Duration;
 @Validated
 public class TradeOrderProperties {
 
+    /** 店铺配送免费；需在部署配置中明确开启。 */
+    private Boolean storeDeliveryEnabled = false;
+
     private static final String PAY_APP_KEY_DEFAULT = "mall";
 
     /**

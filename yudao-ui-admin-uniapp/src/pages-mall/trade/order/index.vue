@@ -34,13 +34,33 @@
             <view class="min-w-0 flex-1 truncate text-30rpx text-[#333] font-semibold">
               {{ item.no || '-' }}
             </view>
-            <dict-tag v-if="item.status != null" :type="DICT_TYPE.TRADE_ORDER_STATUS" :value="item.status" />
+            <view class="shrink-0" @click.stop>
+              <wd-button v-if="canMarkPaid(item)" size="small" @click="handleMarkPaid(item)">
+                已付款
+              </wd-button>
+              <wd-tag v-else-if="item.paymentMethod === 2 && item.payStatus && (item.status === 10 || item.status === 20)" type="success">
+                已付款
+              </wd-tag>
+              <wd-tag v-else-if="item.deliveryType === 3 && item.status === 10" type="primary" variant="plain">
+                待配送
+              </wd-tag>
+              <wd-tag v-else-if="item.deliveryType === 3 && item.status === 20" type="primary" variant="plain">
+                配送中
+              </wd-tag>
+              <dict-tag v-else-if="item.status != null" :type="DICT_TYPE.TRADE_ORDER_STATUS" :value="item.status" />
+            </view>
           </view>
 
           <view class="mb-16rpx text-36rpx text-[#fa8c16] font-semibold">
             {{ formatDisplayMoney(item.payPrice) }}
           </view>
 
+          <view v-if="item.deliveryType === 3 || item.paymentMethod === 2" class="mb-12rpx text-28rpx text-[#46634e]">
+            {{ item.deliveryType === 3 ? '店铺配送' : '快递配送' }} · {{ item.paymentMethod === 2 ? '见面付款' : (item.payStatus ? '在线支付 · 已付款' : '在线支付 · 未付款') }}
+            <text v-if="item.deliveryType === 3">
+              · {{ item.status === 10 ? '待配送' : item.status === 20 ? '配送中' : getDictLabel(DICT_TYPE.TRADE_ORDER_STATUS, item.status) }}
+            </text>
+          </view>
           <view class="mb-12rpx flex items-center text-28rpx text-[#666]">
             <text class="mr-8rpx shrink-0 text-[#999]">订单类型：</text>
             <text>{{ item.type != null ? getDictLabel(DICT_TYPE.TRADE_ORDER_TYPE, item.type) : '-' }}</text>
@@ -51,7 +71,7 @@
           </view>
           <view class="flex items-center text-28rpx text-[#666]">
             <text class="mr-8rpx shrink-0 text-[#999]">下单时间：</text>
-            <text>{{ formatDateTime(item.createTime) || '-' }}</text>
+            <text>{{ formatBeijingDateTime(item.createTime) || '-' }}</text>
           </view>
         </view>
       </view>
@@ -65,10 +85,12 @@ import { onUnload } from '@dcloudio/uni-app'
 import { onMounted, ref } from 'vue'
 import { getTradeOrderPage } from '@/api/mall/trade/order'
 import { getDictLabel } from '@/hooks/useDict'
+import { useAccess } from '@/hooks/useAccess'
 import { formatDisplayMoney } from '@/utils/format'
 import { navigateBackPlus } from '@/utils'
 import { DICT_TYPE } from '@/utils/constants'
-import { formatDateTime } from '@/utils/date'
+import { formatBeijingDateTime } from '@/utils/date'
+import { canMarkOfflineOrderPaid } from '@/utils/offlinePayment'
 import SearchForm from './components/search-form.vue'
 
 definePage({
@@ -81,6 +103,17 @@ definePage({
 const list = ref<TradeOrder[]>([]) // 列表数据
 const pagingRef = ref<any>() // 分页组件引用
 const queryParams = ref<Record<string, any>>({}) // 查询参数
+const { hasAccessByCodes } = useAccess()
+
+function canMarkPaid(order: TradeOrder) {
+  return hasAccessByCodes(['trade:order:confirm-offline-payment']) && canMarkOfflineOrderPaid(order)
+}
+
+function handleMarkPaid(order: TradeOrder) {
+  if (canMarkPaid(order)) {
+    uni.navigateTo({ url: `/pages-mall/trade/order/detail/index?id=${order.id}&markPaid=1` })
+  }
+}
 
 /** 返回上一页 */
 function handleBack() {

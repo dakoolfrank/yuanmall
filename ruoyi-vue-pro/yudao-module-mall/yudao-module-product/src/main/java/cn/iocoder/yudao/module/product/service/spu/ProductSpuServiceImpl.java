@@ -124,11 +124,8 @@ public class ProductSpuServiceImpl implements ProductSpuService {
      * @param id 商品分类编号
      */
     private void validateCategory(Long id) {
-        categoryService.validateCategory(id);
-        // 校验层级
-        if (categoryService.getCategoryLevel(id) < CATEGORY_LEVEL) {
-            throw exception(SPU_SAVE_FAIL_CATEGORY_LEVEL_ERROR);
-        }
+        // 一级/历史二级均可，统一校验存在、启用且没有子分类。
+        categoryService.validateCategoryList(java.util.Collections.singleton(id));
     }
 
     @Override

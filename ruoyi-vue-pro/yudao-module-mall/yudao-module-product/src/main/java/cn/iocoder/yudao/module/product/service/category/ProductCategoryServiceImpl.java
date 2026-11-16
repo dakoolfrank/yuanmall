@@ -46,6 +46,9 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
 
         // 插入
         ProductCategoryDO category = BeanUtils.toBean(createReqVO, ProductCategoryDO.class);
+        if (category.getPicUrl() == null) {
+            category.setPicUrl("");
+        }
         productCategoryMapper.insert(category);
         // 返回
         return category.getId();
@@ -126,8 +129,8 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
             if (!CommonStatusEnum.ENABLE.getStatus().equals(category.getStatus())) {
                 throw exception(CATEGORY_DISABLED, category.getName());
             }
-            // 商品分类层级校验，必须使用第二级的商品分类
-            if (getCategoryLevel(id) < CATEGORY_LEVEL) {
+            // 支持单级分类；保留历史二级分类，但有子节点的分类不能直接绑定商品。
+            if (productCategoryMapper.selectCountByParentId(id) > 0) {
                 throw exception(SPU_SAVE_FAIL_CATEGORY_LEVEL_ERROR);
             }
         });

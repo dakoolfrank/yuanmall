@@ -51,9 +51,32 @@ public class TradeDeliveryPriceCalculator implements TradePriceCalculator {
     @Resource
     private TradeConfigService tradeConfigService;
 
+    @Resource
+    private cn.iocoder.yudao.module.trade.framework.order.config.TradeOrderProperties orderProperties;
+
     @Override
     public void calculate(TradePriceCalculateReqBO param, TradePriceCalculateRespBO result) {
         if (param.getDeliveryType() == null) {
+            return;
+        }
+        if (DeliveryTypeEnum.STORE.getType().equals(param.getDeliveryType())) {
+            if (!Boolean.TRUE.equals(orderProperties.getStoreDeliveryEnabled())) {
+                throw exception(cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.STORE_DELIVERY_DISABLED);
+            }
+            // 店铺自送复用商品可配送能力；纯自提商品不能被客户端改为配送。
+            if (CollectionUtils.anyMatch(result.getItems(), item -> item.getSelected()
+                    && !item.getDeliveryTypes().contains(DeliveryTypeEnum.STORE.getType())
+                    && !item.getDeliveryTypes().contains(DeliveryTypeEnum.EXPRESS.getType()))) {
+                throw exception(PRICE_CALCULATE_DELIVERY_PRICE_TYPE_ILLEGAL);
+            }
+            if (param.getAddressId() != null) {
+                MemberAddressRespDTO address = addressApi.getAddress(param.getAddressId(), param.getUserId());
+                Assert.notNull(address, "收件地址不存在或不属于当前用户");
+            }
+            // 已确认免费自送，不调用快递模板，不继承模板4的异常运费。
+            result.getItems().forEach(item -> item.setDeliveryPrice(0));
+            TradePriceCalculatorHelper.recountPayPrice(result.getItems());
+            TradePriceCalculatorHelper.recountAllPrice(result);
             return;
         }
         // 校验是不是存在商品不能门店自提，或者不能快递发货的情况。就是说，配送方式不匹配哈

@@ -10,6 +10,11 @@ import cn.iocoder.yudao.framework.common.exception.ErrorCode;
  * @since 2022-08-26
  */
 public interface ErrorCodeConstants {
+    ErrorCode OFFLINE_ORDER_INVALID = new ErrorCode(1_011_000_090, "见面付款仅支持普通店铺配送订单，请刷新订单后重试");
+    ErrorCode OFFLINE_RECEIPT_INVALID = new ErrorCode(1_011_000_091, "收款方式、金额或订单状态不正确，请核实后重试");
+    ErrorCode OFFLINE_RECEIPT_CONFLICT = new ErrorCode(1_011_000_092, "订单已变化或已收款，请刷新后核对，勿重复收款");
+    ErrorCode OFFLINE_REFUND_MANUAL = new ErrorCode(1_011_000_093, "见面收款订单不走在线退款，请联系店主核实线下退款");
+    ErrorCode STORE_DELIVERY_DISABLED = new ErrorCode(1_011_000_094, "店铺配送暂未开放");
 
     // ========== Order 模块 1-011-000-000 ==========
     ErrorCode ORDER_ITEM_NOT_FOUND = new ErrorCode(1_011_000_010, "交易订单项不存在");
