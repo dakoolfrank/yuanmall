@@ -7,6 +7,7 @@ import cn.iocoder.yudao.framework.mybatis.core.query.MPJLambdaWrapperX;
 import cn.iocoder.yudao.module.trade.controller.admin.order.vo.TradeOrderPageReqVO;
 import cn.iocoder.yudao.module.trade.controller.app.order.vo.AppTradeOrderPageReqVO;
 import cn.iocoder.yudao.module.trade.dal.dataobject.order.TradeOrderDO;
+import cn.iocoder.yudao.module.trade.enums.order.TradeOrderStatusEnum;
 import cn.iocoder.yudao.module.trade.enums.order.TradeOrderTypeEnum;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
@@ -71,18 +72,31 @@ public interface TradeOrderMapper extends BaseMapperX<TradeOrderDO> {
     }
 
     default PageResult<TradeOrderDO> selectPage(AppTradeOrderPageReqVO reqVO, Long userId) {
-        return selectPage(reqVO, new LambdaQueryWrapperX<TradeOrderDO>()
-                .eq(TradeOrderDO::getUserId, userId)
-                .eqIfPresent(TradeOrderDO::getStatus, reqVO.getStatus())
-                .eqIfPresent(TradeOrderDO::getCommentStatus, reqVO.getCommentStatus())
-                .orderByDesc(TradeOrderDO::getId)); // TODO 芋艿：未来不同的 status，不同的排序
+        return selectPage(reqVO, buildAppOrderQuery(userId, reqVO.getStatus(), reqVO.getCommentStatus())
+                .orderByDesc(TradeOrderDO::getId));
     }
 
     default Long selectCountByUserIdAndStatus(Long userId, Integer status, Boolean commentStatus) {
-        return selectCount(new LambdaQueryWrapperX<TradeOrderDO>()
+        return selectCount(buildAppOrderQuery(userId, status, commentStatus));
+    }
+
+    /**
+     * 顾客端分组共用查询条件，保证角标数量与列表一致。
+     * status=0 表示待付款分组；见面付款订单可同时处于待发货/待收货。
+     * 仅改变查询分组，不改写订单实际状态。
+     */
+    default LambdaQueryWrapperX<TradeOrderDO> buildAppOrderQuery(Long userId, Integer status, Boolean commentStatus) {
+        LambdaQueryWrapperX<TradeOrderDO> query = new LambdaQueryWrapperX<TradeOrderDO>()
                 .eq(TradeOrderDO::getUserId, userId)
-                .eqIfPresent(TradeOrderDO::getStatus, status)
-                .eqIfPresent(TradeOrderDO::getCommentStatus, commentStatus));
+                .eqIfPresent(TradeOrderDO::getCommentStatus, commentStatus);
+        if (TradeOrderStatusEnum.UNPAID.getStatus().equals(status)) {
+            query.eq(TradeOrderDO::getPayStatus, false)
+                    .in(TradeOrderDO::getStatus, TradeOrderStatusEnum.UNPAID.getStatus(),
+                            TradeOrderStatusEnum.UNDELIVERED.getStatus(), TradeOrderStatusEnum.DELIVERED.getStatus());
+        } else {
+            query.eqIfPresent(TradeOrderDO::getStatus, status);
+        }
+        return query;
     }
 
     default TradeOrderDO selectOrderByIdAndUserId(Long orderId, Long loginUserId) {

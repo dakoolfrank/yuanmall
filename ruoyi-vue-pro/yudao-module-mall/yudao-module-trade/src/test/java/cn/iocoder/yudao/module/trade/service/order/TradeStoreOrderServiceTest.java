@@ -61,17 +61,12 @@ class TradeStoreOrderServiceTest extends BaseMockitoUnitTest {
         order.setPaymentMethod(2);
         assertServiceException(() -> service.confirmReceipt(request("wx_lite", 1200), 7L), OFFLINE_RECEIPT_INVALID);
     }
-    @Test void receiptBeforeDispatchKeepsDeliveryPending() {
+    @Test void receiptBeforeDispatchIsRejectedWithoutChangingPayment() {
         order.setStatus(10);
-        when(orderMapper.updateById(any(TradeOrderDO.class))).thenReturn(1);
-        when(itemMapper.selectListByOrderId(9L)).thenReturn(Collections.emptyList());
-        service.confirmReceipt(request("scan", 1200), 7L);
-        verify(orderMapper).updateById(argThat((TradeOrderDO row) -> Boolean.TRUE.equals(row.getPayStatus())
-                && row.getReceiptAmount() == 1200 && row.getReceiptOperatorId() == 7L
-                && "scan".equals(row.getReceiptMethod()) && "offline_scan".equals(row.getPayChannelCode())
-                && row.getPayOrderId() == null && row.getStatus() == null && row.getDeliveryTime() == null));
-        assertEquals(10, order.getStatus());
-        verify(handler).afterPayOrder(eq(order), anyList());
+        assertServiceException(() -> service.confirmReceipt(request("scan", 1200), 7L), OFFLINE_RECEIPT_INVALID);
+        assertFalse(order.getPayStatus());assertEquals(10, order.getStatus());
+        verify(orderMapper, never()).updateById(any(TradeOrderDO.class));
+        verifyNoInteractions(itemMapper, handler);
     }
     @Test void rejectsCanceledCompletedUncreatedAndExpressOrders() {
         for (int status : new int[] {0, 30, 40}) {

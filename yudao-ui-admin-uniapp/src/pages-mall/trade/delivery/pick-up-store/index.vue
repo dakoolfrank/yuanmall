@@ -34,20 +34,26 @@
             <view class="min-w-0 flex-1 truncate text-32rpx text-[#333] font-semibold">
               {{ item.name || '-' }}
             </view>
-            <dict-tag v-if="item.status != null" :type="DICT_TYPE.COMMON_STATUS" :value="item.status" />
+            <wd-tag v-if="item.status === 1 && isPickUpStoreIncomplete(item)" type="warning" variant="plain">
+              待完善
+            </wd-tag>
+            <dict-tag v-else-if="item.status != null" :type="DICT_TYPE.COMMON_STATUS" :value="item.status" />
           </view>
 
           <view class="mb-12rpx flex items-center text-28rpx text-[#666]">
             <text class="mr-8rpx shrink-0 text-[#999]">联系电话：</text>
-            <text>{{ item.phone || '-' }}</text>
+            <text>{{ item.phone || '待补充' }}</text>
           </view>
           <view class="mb-12rpx flex items-center text-28rpx text-[#666]">
             <text class="mr-8rpx shrink-0 text-[#999]">营业开始：</text>
-            <text>{{ item.openingTime || '-' }}</text>
+            <text>{{ item.openingTime || '待补充' }}</text>
           </view>
           <view class="flex items-center text-28rpx text-[#666]">
             <text class="mr-8rpx shrink-0 text-[#999]">营业结束：</text>
-            <text>{{ item.closingTime || '-' }}</text>
+            <text>{{ item.closingTime || '待补充' }}</text>
+          </view>
+          <view class="mt-12rpx text-28rpx text-[#666]">
+            {{ item.areaName || '' }} {{ item.detailAddress || '' }}
           </view>
         </view>
       </view>
@@ -72,6 +78,7 @@ import { getDeliveryPickUpStorePage } from '@/api/mall/trade/delivery/pick-up-st
 import { useAccess } from '@/hooks/useAccess'
 import { navigateBackPlus } from '@/utils'
 import { DICT_TYPE } from '@/utils/constants'
+import { isPickUpStoreIncomplete } from '@/utils/pickUpStore'
 import SearchForm from './components/search-form.vue'
 
 definePage({

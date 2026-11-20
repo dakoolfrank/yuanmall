@@ -20,6 +20,7 @@
                 <wd-input v-model="formData.name" clearable placeholder="请输入商品名称" />
               </wd-form-item>
               <CategorySelect v-model="formData.categoryId" label="类别" label-width="88px" prop="categoryId" />
+              <wd-form-item title="取货方式" title-width="88px" value="店铺配送 / 到店自提" />
             </wd-cell-group>
           </view>
           <view id="edit-skus" class="edit-card">
@@ -57,14 +58,6 @@
                 <wd-form-item title="附加图片" title-width="88px" prop="sliderPicUrls">
                   <yd-upload-imgs v-model="formData.sliderPicUrls" :limit="9" />
                 </wd-form-item>
-                <wd-form-item title="配送方式" title-width="88px" prop="deliveryTypes" center>
-                  <wd-checkbox-group v-model="formData.deliveryTypes" type="button">
-                    <wd-checkbox v-for="dict in getIntDictOptions(DICT_TYPE.TRADE_DELIVERY_TYPE)" :key="dict.value" :name="dict.value">
-                      {{ dict.label }}
-                    </wd-checkbox>
-                  </wd-checkbox-group>
-                </wd-form-item>
-                <TemplateSelect v-if="formData.deliveryTypes?.includes(DeliveryTypeEnum.EXPRESS)" v-model="formData.deliveryTemplateId" label="运费模板" label-width="88px" prop="deliveryTemplateId" />
                 <wd-form-item title="单独分佣" title-width="88px" prop="subCommissionType" center>
                   <wd-radio-group v-model="formData.subCommissionType" type="button">
                     <wd-radio :value="false">
@@ -107,12 +100,10 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import { useAccess } from '@/hooks/useAccess'
 import { createProductSpu, getProductSpu, updateProductSpu } from '@/api/mall/product/spu'
 import { delay, navigateBackPlus } from '@/utils'
-import { DeliveryTypeEnum, DICT_TYPE } from '@/utils/constants'
+import { DeliveryTypeEnum } from '@/utils/constants'
 import BrandSelect from '@/pages-mall/product/brand/components/brand-select.vue'
 import CategorySelect from '@/pages-mall/product/category/components/category-select.vue'
 import SkuEditor from '@/pages-mall/product/spu/components/sku-editor.vue'
-import TemplateSelect from '@/pages-mall/trade/delivery/express-template/components/template-select.vue'
-import { getIntDictOptions } from '@/hooks/useDict'
 import { fenToYuan, yuanToFen } from '@/utils/format'
 import { createFormSchema } from '@/utils/wot'
 import { descriptionFromText, descriptionToText } from '@/utils/productDescription'
@@ -137,6 +128,8 @@ const errorAnchor = ref('')
 const { hasAccessByCodes } = useAccess()
 const canSave = computed(() => hasAccessByCodes([formId.value ? 'product:spu:update' : 'product:spu:create']))
 const getTitle = computed(() => `${formId.value ? '编辑' : '新增'}商品`)
+// 本店所有商品统一支持自提和店铺配送，不再逐商品配置。
+const SHOP_DELIVERY_TYPES = [DeliveryTypeEnum.PICK_UP, DeliveryTypeEnum.STORE]
 const formData = ref<ProductSpu>({
   name: '',
   categoryId: undefined,
@@ -144,7 +137,7 @@ const formData = ref<ProductSpu>({
   picUrl: '',
   sliderPicUrls: [],
   introduction: '',
-  deliveryTypes: [DeliveryTypeEnum.EXPRESS],
+  deliveryTypes: [...SHOP_DELIVERY_TYPES],
   deliveryTemplateId: undefined,
   brandId: undefined,
   specType: false,
@@ -177,7 +170,6 @@ const formSchema = createFormSchema({
   picUrl: [{ required: true, message: '商品封面不能为空' }],
   sliderPicUrls: [{ required: true, message: '轮播图不能为空' }],
   deliveryTypes: [{ required: true, message: '配送方式不能为空' }],
-  deliveryTemplateId: [{ required: (model: Record<string, any>) => !!model?.deliveryTypes?.includes(DeliveryTypeEnum.EXPRESS), message: '运费模板不能为空' }],
   specType: [{ required: true, message: '多规格不能为空' }],
   subCommissionType: [{ required: true, message: '单独分佣不能为空' }],
   description: [{ required: true, message: '商品详情不能为空' }],
@@ -245,7 +237,7 @@ async function loadDetail() {
     const data = await getProductSpu(formId.value)
     if (!data?.id)
       throw new Error('Product not found')
-    formData.value = { ...data, sliderPicUrls: data.sliderPicUrls || [], deliveryTypes: data.deliveryTypes || [] }
+    formData.value = { ...data, sliderPicUrls: data.sliderPicUrls || [], deliveryTypes: [...SHOP_DELIVERY_TYPES] }
     originalDescription.value = data.description || ''
     originalDescriptionText.value = descriptionToText(originalDescription.value)
     descriptionText.value = originalDescriptionText.value
@@ -265,7 +257,7 @@ function buildSubmitData(): ProductSpu {
     ...data,
     id: formId.value,
     sliderPicUrls: data.sliderPicUrls || [],
-    deliveryTypes: data.deliveryTypes || [],
+    deliveryTypes: [...SHOP_DELIVERY_TYPES],
     skus: skus.value.map(toCentSku),
   }
 }

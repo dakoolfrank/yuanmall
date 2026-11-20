@@ -23,6 +23,11 @@ public class AppTradeOrderDetailRespVO {
     private Integer receiptAmount;
     private LocalDateTime receiptTime;
 
+    /** 线下退款登记，原付款记录保留，不是支付渠道退款。 */
+    private String offlineRefundMethod;
+    private Integer offlineRefundAmount;
+    private LocalDateTime offlineRefundTime;
+
 
 
     @Schema(description = "订单流水号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1146347329394184195")

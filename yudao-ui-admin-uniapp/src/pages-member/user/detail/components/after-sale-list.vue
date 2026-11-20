@@ -13,10 +13,10 @@
       :refresher-enabled="true"
       :inside-more="true"
       :loading-more-default-as-loading="true"
-      empty-view-text="暂无售后记录"
+      empty-view-text="暂无售后"
       @query="queryList"
     >
-      <view class="p-24rpx pb-160rpx">
+      <view class="member-after-sale__list">
         <view
           v-for="item in list"
           :key="item.id"
@@ -45,10 +45,10 @@
             <dict-tag :type="DICT_TYPE.TRADE_AFTER_SALE_WAY" :value="item.way" />
           </view>
           <view class="text-24rpx text-[#999]">
-            {{ formatDateTime(item.createTime) || '-' }}
+            {{ formatBeijingDateTime(item.createTime) || '-' }}
           </view>
           <view class="mt-16rpx text-right text-24rpx text-[#1890ff]">
-            处理退款
+            查看售后 ›
           </view>
         </view>
       </view>
@@ -61,7 +61,7 @@ import type { TradeAfterSale } from '@/api/mall/trade/after-sale'
 import { ref, watch } from 'vue'
 import { getTradeAfterSalePage } from '@/api/mall/trade/after-sale'
 import { DICT_TYPE } from '@/utils/constants'
-import { formatDateTime } from '@/utils/date'
+import { formatBeijingDateTime } from '@/utils/date'
 import AfterSaleSearchForm from './after-sale-search-form.vue'
 
 const props = defineProps<{
@@ -128,3 +128,11 @@ watch(
   () => reload(),
 )
 </script>
+
+<style scoped>
+.member-after-sale__list {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
+}
+</style>

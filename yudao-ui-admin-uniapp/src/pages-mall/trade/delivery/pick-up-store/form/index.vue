@@ -9,6 +9,9 @@
 
     <!-- 表单区域 -->
     <view>
+      <view class="p-24rpx text-26rpx text-[#778174]">
+        信息未填齐可先保存，补齐后再启用。
+      </view>
       <wd-form ref="formRef" :model="formData" :schema="formSchema">
         <wd-cell-group border>
           <wd-form-item title="门店名称" title-width="200rpx" prop="name">
@@ -28,20 +31,20 @@
           <wd-datetime-picker v-model="formData.openingTime" v-model:visible="timePickerVisible.opening" title="请选择营业开始时间" type="time" />
           <wd-form-item title="营业结束" title-width="200rpx" prop="closingTime" is-link :value="formData.closingTime" placeholder="请选择营业结束时间" @click="timePickerVisible.closing = true" />
           <wd-datetime-picker v-model="formData.closingTime" v-model:visible="timePickerVisible.closing" title="请选择营业结束时间" type="time" />
-          <wd-form-item title="纬度" title-width="200rpx" prop="latitude" center>
-            <wd-input-number v-model="formData.latitude" :min="-90" :max="90" :step="0.000001" :precision="6" input-width="280rpx" allow-null />
+          <wd-form-item title="地图位置" title-width="200rpx" prop="latitude">
+            <LocationPicker
+              :latitude="formData.latitude" :longitude="formData.longitude"
+              :address="locationAddress" :city="formData.areaId ? String(formData.areaId) : ''"
+              @select="handleLocationSelect"
+            />
           </wd-form-item>
-          <wd-form-item title="经度" title-width="200rpx" prop="longitude" center>
-            <wd-input-number v-model="formData.longitude" :min="-180" :max="180" :step="0.000001" :precision="6" input-width="280rpx" allow-null />
-          </wd-form-item>
-          <wd-form-item title="开启状态" title-width="200rpx" prop="status" center>
+          <wd-form-item title="门店状态" title-width="200rpx" prop="status" center>
             <wd-radio-group v-model="formData.status" type="button">
-              <wd-radio
-                v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
-                :key="dict.value"
-                :value="dict.value"
-              >
-                {{ dict.label }}
+              <wd-radio :value="CommonStatusEnum.DISABLE">
+                停用 / 待完善
+              </wd-radio>
+              <wd-radio :value="CommonStatusEnum.ENABLE">
+                启用
               </wd-radio>
             </wd-radio-group>
           </wd-form-item>
@@ -79,11 +82,12 @@ import {
   updateDeliveryPickUpStore,
 } from '@/api/mall/trade/delivery/pick-up-store'
 import { getAreaTree } from '@/api/system/area'
-import { getIntDictOptions } from '@/hooks/useDict'
 import { delay, navigateBackPlus } from '@/utils'
-import { CommonStatusEnum, DICT_TYPE } from '@/utils/constants'
+import { CommonStatusEnum } from '@/utils/constants'
 import { createFormSchema } from '@/utils/wot'
 import { isMobile } from '@/utils/validator'
+import type { MapCoordinate } from '@/utils/coordinate'
+import LocationPicker from '../components/location-picker.vue'
 
 const props = defineProps<{
   id?: number | any
@@ -102,34 +106,41 @@ const formLoading = ref(false) // 表单提交状态
 const areaTree = ref<any[]>([]) // 地区树数据
 const formData = ref<DeliveryPickUpStore>({
   id: undefined,
-  name: '',
+  name: '团团园园杂货铺自提点',
   phone: '',
-  logo: '',
+  logo: 'https://mall.nexrur.ai/static/brand/tuantuanyuanyuan-logo.png',
   areaId: undefined,
   detailAddress: '',
-  openingTime: '09:00',
-  closingTime: '18:00',
-  latitude: undefined,
-  longitude: undefined,
-  status: CommonStatusEnum.ENABLE,
+  openingTime: '',
+  closingTime: '',
+  latitude: null,
+  longitude: null,
+  status: CommonStatusEnum.DISABLE,
   introduction: '',
 }) // 表单数据
 const formSchema = createFormSchema({
   name: [{ required: true, message: '门店名称不能为空' }],
   phone: [
-    { required: true, message: '联系电话不能为空' },
+    { required: () => formData.value.status === CommonStatusEnum.ENABLE, message: '启用前请填写联系电话' },
     { validator: value => !value || isMobile(String(value)) || '手机号格式不正确' },
   ],
+  logo: [{ required: true, message: '门店 Logo 不能为空' }],
   areaId: [{ required: true, message: '所在地区不能为空' }],
   detailAddress: [{ required: true, message: '详细地址不能为空' }],
-  openingTime: [{ required: true, message: '营业开始时间不能为空' }],
-  closingTime: [{ required: true, message: '营业结束时间不能为空' }],
+  openingTime: [{ required: () => formData.value.status === CommonStatusEnum.ENABLE, message: '启用前请填写营业开始时间' }],
+  closingTime: [{ required: () => formData.value.status === CommonStatusEnum.ENABLE, message: '启用前请填写营业结束时间' }],
   status: [{ required: true, message: '开启状态不能为空' }],
-  latitude: [{ required: true, message: '纬度不能为空' }],
-  longitude: [{ required: true, message: '经度不能为空' }],
+  latitude: [{ required: () => formData.value.status === CommonStatusEnum.ENABLE, message: '启用前请在地图选择门店位置', type: 'number', min: -90, max: 90 }],
+  longitude: [{ required: () => formData.value.status === CommonStatusEnum.ENABLE, message: '启用前请在地图选择门店位置', type: 'number', min: -180, max: 180 }],
 })
 const formRef = ref<FormInstance>() // 表单组件引用
 const timePickerVisible = reactive({ opening: false, closing: false }) // 营业时间选择弹窗
+const locationAddress = computed(() => `${formData.value.areaName || ''} ${formData.value.detailAddress || ''}`.trim())
+
+function handleLocationSelect(point: MapCoordinate) {
+  formData.value.latitude = point.latitude
+  formData.value.longitude = point.longitude
+}
 
 /** 返回上一页 */
 function handleBack() {
@@ -142,7 +153,7 @@ async function getDetail() {
     return
   }
   const data = await getDeliveryPickUpStore(parseId(props.id) as number)
-  formData.value = { ...data }
+  formData.value = { ...data, openingTime: data.openingTime || '', closingTime: data.closingTime || '' }
 }
 
 /** 提交表单 */
@@ -154,7 +165,14 @@ async function handleSubmit() {
 
   formLoading.value = true
   try {
-    const data: DeliveryPickUpStore = { ...formData.value }
+    const data: DeliveryPickUpStore = {
+      ...formData.value,
+      phone: formData.value.phone?.trim() || '',
+      openingTime: formData.value.openingTime || null,
+      closingTime: formData.value.closingTime || null,
+      latitude: nullableCoordinate(formData.value.latitude),
+      longitude: nullableCoordinate(formData.value.longitude),
+    }
     if (props.id) {
       await updateDeliveryPickUpStore(data)
       toast.success('修改成功')
@@ -167,6 +185,10 @@ async function handleSubmit() {
   } finally {
     formLoading.value = false
   }
+}
+
+function nullableCoordinate(value: unknown): number | null {
+  return value == null || value === '' ? null : Number(value)
 }
 
 /** 初始化 */

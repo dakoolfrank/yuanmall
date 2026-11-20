@@ -10,7 +10,7 @@ import lombok.Data;
 @Data
 public class AppTradeOrderPageReqVO extends PageParam {
 
-    @Schema(description = "订单状态", example = "1")
+    @Schema(description = "订单分组：0 待付款（进行中且未付款），10 待发货/待取货，20 待收货；付款与交货分组可重叠", example = "0")
     @InEnum(value = TradeOrderStatusEnum.class, message = "订单状态必须是 {value}")
     private Integer status;
 

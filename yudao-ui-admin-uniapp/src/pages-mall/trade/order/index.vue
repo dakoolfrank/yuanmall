@@ -27,25 +27,25 @@
         <view
           v-for="item in list"
           :key="item.id"
-          class="mb-24rpx overflow-hidden rounded-12rpx bg-white p-24rpx shadow-sm"
+          class="order-list-card mb-24rpx overflow-hidden rounded-12rpx bg-white p-24rpx shadow-sm"
           @click="handleDetail(item)"
         >
           <view class="mb-16rpx flex items-start justify-between gap-16rpx">
             <view class="min-w-0 flex-1 truncate text-30rpx text-[#333] font-semibold">
               {{ item.no || '-' }}
             </view>
-            <view class="shrink-0" @click.stop>
-              <wd-button v-if="canMarkPaid(item)" size="small" @click="handleMarkPaid(item)">
-                已付款
-              </wd-button>
+            <view class="flex shrink-0 items-center gap-12rpx">
+              <wd-tag v-if="item.status === 40" type="default" variant="plain">
+                {{ orderStatusLabel(item) }}
+              </wd-tag>
+              <wd-tag v-else-if="item.deliveryType === 3 && (item.status === 10 || item.status === 20)" type="primary" variant="plain">
+                {{ orderStatusLabel(item) }}
+              </wd-tag>
+              <wd-tag v-else-if="item.deliveryType === 2 && item.status === 10" type="primary" variant="plain">
+                {{ orderStatusLabel(item) }}
+              </wd-tag>
               <wd-tag v-else-if="item.paymentMethod === 2 && item.payStatus && (item.status === 10 || item.status === 20)" type="success">
-                已付款
-              </wd-tag>
-              <wd-tag v-else-if="item.deliveryType === 3 && item.status === 10" type="primary" variant="plain">
-                待配送
-              </wd-tag>
-              <wd-tag v-else-if="item.deliveryType === 3 && item.status === 20" type="primary" variant="plain">
-                配送中
+                {{ orderStatusLabel(item) }}
               </wd-tag>
               <dict-tag v-else-if="item.status != null" :type="DICT_TYPE.TRADE_ORDER_STATUS" :value="item.status" />
             </view>
@@ -55,11 +55,8 @@
             {{ formatDisplayMoney(item.payPrice) }}
           </view>
 
-          <view v-if="item.deliveryType === 3 || item.paymentMethod === 2" class="mb-12rpx text-28rpx text-[#46634e]">
-            {{ item.deliveryType === 3 ? '店铺配送' : '快递配送' }} · {{ item.paymentMethod === 2 ? '见面付款' : (item.payStatus ? '在线支付 · 已付款' : '在线支付 · 未付款') }}
-            <text v-if="item.deliveryType === 3">
-              · {{ item.status === 10 ? '待配送' : item.status === 20 ? '配送中' : getDictLabel(DICT_TYPE.TRADE_ORDER_STATUS, item.status) }}
-            </text>
+          <view v-if="item.deliveryType === 2 || item.deliveryType === 3 || item.paymentMethod === 2" class="order-card-description mb-12rpx text-28rpx text-[#46634e]">
+            {{ orderDescription(item) }}
           </view>
           <view class="mb-12rpx flex items-center text-28rpx text-[#666]">
             <text class="mr-8rpx shrink-0 text-[#999]">订单类型：</text>
@@ -85,12 +82,12 @@ import { onUnload } from '@dcloudio/uni-app'
 import { onMounted, ref } from 'vue'
 import { getTradeOrderPage } from '@/api/mall/trade/order'
 import { getDictLabel } from '@/hooks/useDict'
-import { useAccess } from '@/hooks/useAccess'
+import { useUserStore } from '@/store/user'
 import { formatDisplayMoney } from '@/utils/format'
 import { navigateBackPlus } from '@/utils'
 import { DICT_TYPE } from '@/utils/constants'
 import { formatBeijingDateTime } from '@/utils/date'
-import { canMarkOfflineOrderPaid } from '@/utils/offlinePayment'
+import { orderPaymentDescription } from '@/utils/offlinePayment'
 import SearchForm from './components/search-form.vue'
 
 definePage({
@@ -103,16 +100,27 @@ definePage({
 const list = ref<TradeOrder[]>([]) // 列表数据
 const pagingRef = ref<any>() // 分页组件引用
 const queryParams = ref<Record<string, any>>({}) // 查询参数
-const { hasAccessByCodes } = useAccess()
+const userStore = useUserStore()
 
-function canMarkPaid(order: TradeOrder) {
-  return hasAccessByCodes(['trade:order:confirm-offline-payment']) && canMarkOfflineOrderPaid(order)
+/** 右上角标签和说明行使用同一状态文案，避免重复显示。 */
+function orderStatusLabel(order: TradeOrder) {
+  if (order.status === 40)
+    return '已取消'
+  if (order.deliveryType === 3 && (order.status === 10 || order.status === 20))
+    return order.status === 10 ? '待配送' : '配送中'
+  if (order.deliveryType === 2 && order.status === 10)
+    return order.payStatus ? '待取货' : '待收款'
+  if (order.paymentMethod === 2 && order.payStatus && (order.status === 10 || order.status === 20))
+    return '已付款'
+  return getDictLabel(DICT_TYPE.TRADE_ORDER_STATUS, order.status) || ''
 }
 
-function handleMarkPaid(order: TradeOrder) {
-  if (canMarkPaid(order)) {
-    uni.navigateTo({ url: `/pages-mall/trade/order/detail/index?id=${order.id}&markPaid=1` })
-  }
+function orderDescription(order: TradeOrder) {
+  const delivery = order.deliveryType === 2 ? '到店自提' : order.deliveryType === 3 ? '店铺配送' : '快递配送'
+  const badge = orderStatusLabel(order)
+  return [delivery, ...orderPaymentDescription(order).split(' · ')]
+    .filter(part => part !== badge)
+    .join(' · ')
 }
 
 /** 返回上一页 */
@@ -152,8 +160,9 @@ function handleDetail(item: TradeOrder) {
 }
 
 /** 初始化 */
-onMounted(() => {
+onMounted(async () => {
   uni.$on('mall:trade-order:reload', reload)
+  await userStore.fetchUserInfo()
 })
 
 /** 卸载 */

@@ -144,10 +144,10 @@ public class AppTradeOrderController {
         Map<String, Long> orderCount = Maps.newLinkedHashMapWithExpectedSize(5);
         // 全部
         orderCount.put("allCount", tradeOrderQueryService.getOrderCount(getLoginUserId(), null, null));
-        // 待付款（未支付）
+        // 待付款：进行中且未付款，与待发货、待收货可重叠
         orderCount.put("unpaidCount", tradeOrderQueryService.getOrderCount(getLoginUserId(),
                 TradeOrderStatusEnum.UNPAID.getStatus(), null));
-        // 待发货
+        // 待发货/待取货，不以是否收款为前提
         orderCount.put("undeliveredCount", tradeOrderQueryService.getOrderCount(getLoginUserId(),
                 TradeOrderStatusEnum.UNDELIVERED.getStatus(), null));
         // 待收货

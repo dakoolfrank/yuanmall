@@ -140,7 +140,8 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
             throw exception(OFFLINE_ORDER_INVALID);
         }
         if (Integer.valueOf(2).equals(request.getPaymentMethod())
-                && (!DeliveryTypeEnum.STORE.getType().equals(request.getDeliveryType())
+                && ((!DeliveryTypeEnum.STORE.getType().equals(request.getDeliveryType())
+                     && !DeliveryTypeEnum.PICK_UP.getType().equals(request.getDeliveryType()))
                     || request.getSeckillActivityId() != null || request.getCombinationActivityId() != null
                     || request.getCombinationHeadId() != null || request.getBargainRecordId() != null
                     || request.getPointActivityId() != null)) {
@@ -508,6 +509,9 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
     public void receiveOrderByMember(Long userId, Long id) {
         // 校验并获得交易订单（可收货）
         TradeOrderDO order = validateOrderReceivable(userId, id);
+        if (Integer.valueOf(2).equals(order.getPaymentMethod())) {
+            throw exception(OFFLINE_COMPLETE_ADMIN_REQUIRED);
+        }
 
         // 收货订单
         receiveOrder0(order);
@@ -526,6 +530,10 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         // 2. 遍历执行，逐个取消
         int count = 0;
         for (TradeOrderDO order : orders) {
+            // 见面付款订单由店主确认交货，不因超时自动完成。
+            if (Integer.valueOf(2).equals(order.getPaymentMethod())) {
+                continue;
+            }
             try {
                 getSelf().receiveOrderBySystem(order);
                 count++;
@@ -544,6 +552,9 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
     @Transactional(rollbackFor = Exception.class)
     @TradeOrderLog(operateType = TradeOrderOperateTypeEnum.SYSTEM_RECEIVE)
     public void receiveOrderBySystem(TradeOrderDO order) {
+        if (Integer.valueOf(2).equals(order.getPaymentMethod())) {
+            throw exception(OFFLINE_COMPLETE_ADMIN_REQUIRED);
+        }
         receiveOrder0(order);
     }
 
@@ -553,8 +564,8 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
      * @param order 订单
      */
     private void receiveOrder0(TradeOrderDO order) {
-        if (Integer.valueOf(2).equals(order.getPaymentMethod()) && !Boolean.TRUE.equals(order.getPayStatus())) {
-            throw exception(OFFLINE_RECEIPT_INVALID);
+        if (!Boolean.TRUE.equals(order.getPayStatus())) {
+            throw exception(ORDER_RECEIVE_FAIL_NOT_PAID);
         }
         // 1. 更新 TradeOrderDO 状态为已完成
         LocalDateTime receiveTime = LocalDateTime.now();
@@ -603,22 +614,31 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         if (order == null) {
             throw exception(ORDER_NOT_FOUND);
         }
+        // 与收款、开始配送、确认送达和取货共享行锁；不能沿用锁前状态或归属。
+        order = tradeOrderMapper.selectForUpdate(id);
+        if (order == null || !Objects.equals(userId, order.getUserId())) {
+            throw exception(ORDER_NOT_FOUND);
+        }
         if (Integer.valueOf(2).equals(order.getPaymentMethod())) {
-            order = tradeOrderMapper.selectForUpdate(id);
-        }
-        // 见面付款只允许尚未开始配送、尚未收款时取消。
-        boolean offlineCancelable = Integer.valueOf(2).equals(order.getPaymentMethod())
-                && !Boolean.TRUE.equals(order.getPayStatus())
-                && TradeOrderStatusEnum.UNDELIVERED.getStatus().equals(order.getStatus());
-        // 1.2 校验状态
-        if (!offlineCancelable && ObjectUtil.notEqual(order.getStatus(), TradeOrderStatusEnum.UNPAID.getStatus())) {
-            throw exception(ORDER_CANCEL_FAIL_STATUS_NOT_UNPAID);
-        }
-        // 1.3 校验是否支持延迟（不允许取消）
-        if (TradeOrderStatusEnum.isUnpaid(order.getStatus())) {
-            PayOrderRespDTO payOrder = payOrderApi.getOrder(order.getPayOrderId());
+            if (!TradeOrderTypeEnum.NORMAL.getType().equals(order.getType())
+                    || (!DeliveryTypeEnum.STORE.getType().equals(order.getDeliveryType())
+                        && !DeliveryTypeEnum.PICK_UP.getType().equals(order.getDeliveryType()))
+                    || !TradeOrderRefundStatusEnum.NONE.getStatus().equals(order.getRefundStatus())) {
+                throw exception(OFFLINE_ORDER_INVALID);
+            }
+            // 普通见面付款订单完成前可取消，已收款也保留付款历史，不在此办理退款。
+            if (!TradeOrderStatusEnum.isUndelivered(order.getStatus())
+                    && !TradeOrderStatusEnum.isDelivered(order.getStatus())
+                    && !(TradeOrderStatusEnum.isUnpaid(order.getStatus()) && !Boolean.TRUE.equals(order.getPayStatus()))) {
+                throw exception(ORDER_CANCEL_FAIL_STATUS_NOT_UNPAID);
+            }
+        } else {
+            // 历史在线付款订单仍仅允许未付款时取消，不能绕过真实退款流程。
+            if (!TradeOrderStatusEnum.isUnpaid(order.getStatus()) || Boolean.TRUE.equals(order.getPayStatus())) {
+                throw exception(ORDER_CANCEL_FAIL_STATUS_NOT_UNPAID);
+            }
+            PayOrderRespDTO payOrder = order.getPayOrderId() == null ? null : payOrderApi.getOrder(order.getPayOrderId());
             if (payOrder != null && PayOrderStatusEnum.isSuccess(payOrder.getStatus())) {
-                log.warn("[cancelOrderByMember][order({}) 支付单已支付（支付回调延迟），不支持取消]", order.getId());
                 throw exception(ORDER_CANCEL_FAIL_STATUS_NOT_UNPAID);
             }
         }
@@ -693,7 +713,9 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         TradeOrderLogUtils.setOrderInfo(order.getId(), order.getStatus(), TradeOrderStatusEnum.CANCELED.getStatus());
 
         // 4. 关闭支付单
-        closePayOrder(order.getId(), order.getPayOrderId(), cancelType);
+        if (!Integer.valueOf(2).equals(order.getPaymentMethod())) {
+            closePayOrder(order.getId(), order.getPayOrderId(), cancelType);
+        }
     }
 
     /**
@@ -875,11 +897,21 @@ public class TradeOrderUpdateServiceImpl implements TradeOrderUpdateService {
         if (order == null) {
             throw exception(ORDER_NOT_FOUND);
         }
+        // 与线下收款、取消等操作串行，不能使用进入方法前查询到的旧付款状态。
+        order = tradeOrderMapper.selectForUpdate(order.getId());
+        if (order == null) {
+            throw exception(ORDER_NOT_FOUND);
+        }
         if (ObjUtil.notEqual(DeliveryTypeEnum.PICK_UP.getType(), order.getDeliveryType())) {
             throw exception(ORDER_RECEIVE_FAIL_DELIVERY_TYPE_NOT_PICK_UP);
         }
         if (!TradeOrderStatusEnum.isUndelivered(order.getStatus())) {
             throw exception(ORDER_PICK_UP_FAIL_STATUS_NOT_UNDELIVERED);
+        }
+        if (!Boolean.TRUE.equals(order.getPayStatus())
+                || (Integer.valueOf(2).equals(order.getPaymentMethod())
+                    && !TradeOrderRefundStatusEnum.NONE.getStatus().equals(order.getRefundStatus()))) {
+            throw exception(OFFLINE_RECEIPT_INVALID);
         }
         // 情况一：如果是拼团订单，则校验拼团是否成功
         if (TradeOrderTypeEnum.isCombination(order.getType())) {

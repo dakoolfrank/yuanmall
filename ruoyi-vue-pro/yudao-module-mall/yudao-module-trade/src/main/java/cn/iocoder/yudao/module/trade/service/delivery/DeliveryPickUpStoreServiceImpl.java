@@ -12,6 +12,7 @@ import cn.iocoder.yudao.module.trade.dal.dataobject.delivery.DeliveryPickUpStore
 import cn.iocoder.yudao.module.trade.dal.mysql.delivery.DeliveryPickUpStoreMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
 import javax.annotation.Resource;
 import java.util.Collection;
@@ -39,6 +40,7 @@ public class DeliveryPickUpStoreServiceImpl implements DeliveryPickUpStoreServic
     public Long createDeliveryPickUpStore(DeliveryPickUpStoreCreateReqVO createReqVO) {
         // 插入
         DeliveryPickUpStoreDO deliveryPickUpStore = DeliveryPickUpStoreConvert.INSTANCE.convert(createReqVO);
+        deliveryPickUpStore.setPhone(createReqVO.getPhone() == null ? "" : createReqVO.getPhone());
         deliveryPickUpStoreMapper.insert(deliveryPickUpStore);
         // 返回
         return deliveryPickUpStore.getId();
@@ -50,7 +52,14 @@ public class DeliveryPickUpStoreServiceImpl implements DeliveryPickUpStoreServic
         validateDeliveryPickUpStoreExists(updateReqVO.getId());
         // 更新
         DeliveryPickUpStoreDO updateObj = DeliveryPickUpStoreConvert.INSTANCE.convert(updateReqVO);
-        deliveryPickUpStoreMapper.updateById(updateObj);
+        updateObj.setPhone(updateReqVO.getPhone() == null ? "" : updateReqVO.getPhone());
+        // 完整表单更新：允许停用门店清空待补充字段，不影响独立的核销员绑定操作。
+        deliveryPickUpStoreMapper.update(updateObj, Wrappers.<DeliveryPickUpStoreDO>lambdaUpdate()
+                .eq(DeliveryPickUpStoreDO::getId, updateReqVO.getId())
+                .set(updateReqVO.getOpeningTime() == null, DeliveryPickUpStoreDO::getOpeningTime, null)
+                .set(updateReqVO.getClosingTime() == null, DeliveryPickUpStoreDO::getClosingTime, null)
+                .set(updateReqVO.getLatitude() == null, DeliveryPickUpStoreDO::getLatitude, null)
+                .set(updateReqVO.getLongitude() == null, DeliveryPickUpStoreDO::getLongitude, null));
     }
 
     @Override

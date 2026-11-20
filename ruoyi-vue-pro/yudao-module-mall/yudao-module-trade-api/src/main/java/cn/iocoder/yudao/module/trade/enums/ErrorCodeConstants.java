@@ -10,11 +10,15 @@ import cn.iocoder.yudao.framework.common.exception.ErrorCode;
  * @since 2022-08-26
  */
 public interface ErrorCodeConstants {
-    ErrorCode OFFLINE_ORDER_INVALID = new ErrorCode(1_011_000_090, "见面付款仅支持普通店铺配送订单，请刷新订单后重试");
+    ErrorCode OFFLINE_ORDER_INVALID = new ErrorCode(1_011_000_090, "见面付款仅支持普通店铺配送或自提订单，请刷新订单后重试");
     ErrorCode OFFLINE_RECEIPT_INVALID = new ErrorCode(1_011_000_091, "收款方式、金额或订单状态不正确，请核实后重试");
     ErrorCode OFFLINE_RECEIPT_CONFLICT = new ErrorCode(1_011_000_092, "订单已变化或已收款，请刷新后核对，勿重复收款");
     ErrorCode OFFLINE_REFUND_MANUAL = new ErrorCode(1_011_000_093, "见面收款订单不走在线退款，请联系店主核实线下退款");
     ErrorCode STORE_DELIVERY_DISABLED = new ErrorCode(1_011_000_094, "店铺配送暂未开放");
+    ErrorCode OFFLINE_COMPLETE_ADMIN_REQUIRED = new ErrorCode(1_011_000_095, "见面付款订单由店主确认完成，请联系店主");
+    ErrorCode ORDER_RECEIVE_FAIL_NOT_PAID = new ErrorCode(1_011_000_096, "订单尚未付款，不能确认完成");
+    ErrorCode OFFLINE_REFUND_INVALID = new ErrorCode(1_011_000_097, "仅已取消且已收款的见面订单可登记全额线下退款，请核对方式、金额及订单");
+    ErrorCode OFFLINE_REFUND_CONFLICT = new ErrorCode(1_011_000_098, "该订单已登记退款，请刷新核对，勿重复退钱");
 
     // ========== Order 模块 1-011-000-000 ==========
     ErrorCode ORDER_ITEM_NOT_FOUND = new ErrorCode(1_011_000_010, "交易订单项不存在");
@@ -32,7 +36,7 @@ public interface ErrorCodeConstants {
     ErrorCode ORDER_DELIVERY_FAIL_COMBINATION_RECORD_STATUS_NOT_SUCCESS = new ErrorCode(1_011_000_022, "交易订单发货失败，拼团未成功");
     ErrorCode ORDER_DELIVERY_FAIL_BARGAIN_RECORD_STATUS_NOT_SUCCESS = new ErrorCode(1_011_000_023, "交易订单发货失败，砍价未成功");
     ErrorCode ORDER_DELIVERY_FAIL_DELIVERY_TYPE_NOT_EXPRESS = new ErrorCode(1_011_000_024, "交易订单发货失败，发货类型不是快递");
-    ErrorCode ORDER_CANCEL_FAIL_STATUS_NOT_UNPAID = new ErrorCode(1_011_000_025, "交易订单取消失败，订单不是【待支付】状态");
+    ErrorCode ORDER_CANCEL_FAIL_STATUS_NOT_UNPAID = new ErrorCode(1_011_000_025, "交易订单当前状态不支持取消，请刷新后核对");
     ErrorCode ORDER_UPDATE_PRICE_FAIL_PAID = new ErrorCode(1_011_000_026, "支付订单调价失败，原因：支付订单已付款,不能调价");
     ErrorCode ORDER_UPDATE_PRICE_FAIL_ALREADY = new ErrorCode(1_011_000_027, "支付订单调价失败，原因：已经修改过价格");
     ErrorCode ORDER_UPDATE_PRICE_FAIL_PRICE_ERROR = new ErrorCode(1_011_000_028, "支付订单调价失败，原因：调整后支付价格不能小于 0.01 元");

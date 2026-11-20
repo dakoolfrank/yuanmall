@@ -16,6 +16,12 @@ public class AppTradeOrderPageItemRespVO {
 
     private Integer paymentMethod;
 
+    private String offlineRefundMethod;
+    private Integer offlineRefundAmount;
+    private LocalDateTime offlineRefundTime;
+    private Integer refundStatus;
+    private Integer refundPrice;
+
     @Schema(description = "订单流水号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1146347329394184195")
     private String no;
 
@@ -35,6 +41,9 @@ public class AppTradeOrderPageItemRespVO {
     private LocalDateTime createTime;
 
     // ========== 价格 + 支付基本信息 ==========
+
+    @Schema(description = "是否已付款，与配送进度独立", requiredMode = Schema.RequiredMode.REQUIRED, example = "false")
+    private Boolean payStatus;
 
     @Schema(description = "支付订单编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1024")
     private Long payOrderId;

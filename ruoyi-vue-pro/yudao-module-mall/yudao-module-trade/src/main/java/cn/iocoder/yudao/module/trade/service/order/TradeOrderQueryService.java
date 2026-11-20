@@ -87,7 +87,7 @@ public interface TradeOrderQueryService {
      * 【会员】获得交易订单数量
      *
      * @param userId       用户编号
-     * @param status       订单状态。如果为空，则不进行筛选
+     * @param status       顾客订单分组：0 为进行中且未付款，与待发货/待收货可重叠；为空不筛选
      * @param commonStatus 评价状态。如果为空，则不进行筛选
      * @return 订单数量
      */

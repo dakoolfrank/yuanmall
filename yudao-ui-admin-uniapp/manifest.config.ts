@@ -149,10 +149,10 @@ export default defineManifestConfig({
     appid: VITE_WX_APPID,
     permission: {
       'scope.userLocation': {
-        desc: '用于员工考勤定位打卡',
+        desc: '用于选择自提门店位置及员工考勤定位打卡',
       },
     },
-    requiredPrivateInfos: ['getLocation'],
+    requiredPrivateInfos: ['getLocation', 'chooseLocation'],
     setting: {
       urlCheck: false,
       // 是否启用 ES6 转 ES5

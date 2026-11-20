@@ -83,7 +83,8 @@ public interface TradeOrderUpdateService {
     int receiveOrderBySystem();
 
     /**
-     * 【会员】取消交易订单
+     * 【会员】取消交易订单。普通见面付款订单完成前可取消，保留实际收款历史；
+     * 已取消/完成不可重复处理，历史在线已付款订单不走直接取消。
      *
      * @param userId 用户编号
      * @param id     订单编号

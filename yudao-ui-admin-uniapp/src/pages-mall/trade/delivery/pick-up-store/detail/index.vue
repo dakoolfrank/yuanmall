@@ -10,23 +10,26 @@
     <!-- 详情内容 -->
     <wd-cell-group border>
       <wd-cell title="门店名称" :value="formData.name || '-'" />
-      <wd-cell title="联系电话" :value="formData.phone || '-'" />
+      <wd-cell title="联系电话" :value="formData.phone || '待补充'" />
       <wd-cell title="门店 Logo">
         <wd-img v-if="formData.logo" :src="formData.logo" width="112rpx" height="112rpx" radius="8rpx" mode="aspectFill" enable-preview />
         <text v-else>-</text>
       </wd-cell>
       <wd-cell title="所在地区" :value="formData.areaName || '-'" />
       <wd-cell title="详细地址" :value="formData.detailAddress || '-'" />
-      <wd-cell title="营业开始" :value="formData.openingTime || '-'" />
-      <wd-cell title="营业结束" :value="formData.closingTime || '-'" />
-      <wd-cell title="纬度" :value="formData.latitude != null ? String(formData.latitude) : '-'" />
-      <wd-cell title="经度" :value="formData.longitude != null ? String(formData.longitude) : '-'" />
+      <wd-cell title="营业开始" :value="formData.openingTime || '待补充'" />
+      <wd-cell title="营业结束" :value="formData.closingTime || '待补充'" />
+      <wd-cell title="地图位置" :value="Number.isFinite(formData.latitude) && Number.isFinite(formData.longitude) ? '已标记' : '待选点'" />
+      <wd-cell title="取货负责人" :value="pickupStaffName" />
       <wd-cell title="开启状态">
-        <dict-tag v-if="formData.status != null" :type="DICT_TYPE.COMMON_STATUS" :value="formData.status" />
+        <wd-tag v-if="formData.status === 1 && isPickUpStoreIncomplete(formData)" type="warning" variant="plain">
+          待完善
+        </wd-tag>
+        <dict-tag v-else-if="formData.status != null" :type="DICT_TYPE.COMMON_STATUS" :value="formData.status" />
         <text v-else>-</text>
       </wd-cell>
       <wd-cell title="简介" :value="formData.introduction || '-'" />
-      <wd-cell title="创建时间" :value="formatDateTime(formData.createTime) || '-'" />
+      <wd-cell title="创建时间" :value="formatBeijingDateTime(formData.createTime) || '-'" />
     </wd-cell-group>
 
     <!-- 底部操作按钮 -->
@@ -38,23 +41,8 @@
         <wd-button v-if="hasAccessByCodes(['trade:delivery:pick-up-store:delete'])" class="flex-1" type="danger" :loading="deleting" @click="handleDelete">
           删除
         </wd-button>
-        <!-- 绑定核销员 -->
-        <view v-if="hasAccessByCodes(['trade:delivery:pick-up-store:update'])" class="flex-1">
-          <wd-button class="w-full" type="primary" :loading="binding" @click="staffPickerRef?.open()">
-            绑定核销员
-          </wd-button>
-        </view>
       </view>
     </view>
-
-    <!-- 核销员选择 -->
-    <UserPicker
-      ref="staffPickerRef"
-      v-model="bindStaffIds"
-      title="选择核销员"
-      type="checkbox"
-      @confirm="handleBindStaff"
-    />
   </view>
 </template>
 
@@ -65,17 +53,17 @@ import type { DeliveryPickUpStore } from '@/api/mall/trade/delivery/pick-up-stor
 import { onUnload } from '@dcloudio/uni-app'
 import { useDialog } from '@wot-ui/ui/components/wd-dialog'
 import { useToast } from '@wot-ui/ui/components/wd-toast'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import {
-  bindDeliveryPickUpStoreStaff,
   deleteDeliveryPickUpStore,
   getDeliveryPickUpStore,
 } from '@/api/mall/trade/delivery/pick-up-store'
-import { UserPicker } from '@/components/system-select'
 import { useAccess } from '@/hooks/useAccess'
+import { useUserStore } from '@/store/user'
 import { delay, navigateBackPlus } from '@/utils'
 import { DICT_TYPE } from '@/utils/constants'
-import { formatDateTime } from '@/utils/date'
+import { formatBeijingDateTime } from '@/utils/date'
+import { isPickUpStoreIncomplete } from '@/utils/pickUpStore'
 
 const props = defineProps<{ id?: number | any }>()
 
@@ -89,11 +77,19 @@ definePage({
 const { hasAccessByCodes } = useAccess()
 const dialog = useDialog()
 const toast = useToast()
+const userStore = useUserStore()
 const formData = ref<DeliveryPickUpStore>({} as DeliveryPickUpStore) // 详情数据
 const deleting = ref(false) // 删除状态
-const bindStaffIds = ref<number[]>([]) // 绑定的核销员用户编号（与已绑定保持同步，打开选择器即回显）
-const binding = ref(false) // 绑定提交状态
-const staffPickerRef = ref<InstanceType<typeof UserPicker>>() // 核销员选择器
+const pickupStaffName = computed(() => {
+  const currentUser = userStore.userInfo
+  const currentUserId = currentUser.id ?? currentUser.userId
+  return (formData.value.verifyUsers || []).map((user) => {
+    // 已绑定的负责人就是当前账号时显示账号名，避免店主看到框架演示昵称。
+    return user.id != null && String(user.id) === String(currentUserId)
+      ? currentUser.username || user.nickname || '已设置'
+      : user.nickname || '已设置'
+  }).join('、') || '未设置'
+})
 
 /** 返回上一页 */
 function handleBack() {
@@ -108,8 +104,6 @@ async function getDetail() {
   try {
     toast.loading('加载中...')
     formData.value = await getDeliveryPickUpStore(parseId(props.id) as number)
-    // 详情 get 返回 verifyUsers（用户对象），取 id 回显已绑定核销员
-    bindStaffIds.value = (formData.value.verifyUsers || []).map(u => parseId(u.id) as number).filter(Boolean)
   } finally {
     toast.close()
   }
@@ -138,19 +132,6 @@ async function handleDelete() {
     delay(handleBack)
   } finally {
     deleting.value = false
-  }
-}
-
-/** 提交绑定核销员（用户选择器确定后触发） */
-async function handleBindStaff() {
-  binding.value = true
-  try {
-    await bindDeliveryPickUpStoreStaff({ id: formData.value.id, verifyUserIds: bindStaffIds.value })
-    toast.success('绑定成功')
-    uni.$emit('mall:delivery-pick-up-store:reload')
-    await getDetail()
-  } finally {
-    binding.value = false
   }
 }
 

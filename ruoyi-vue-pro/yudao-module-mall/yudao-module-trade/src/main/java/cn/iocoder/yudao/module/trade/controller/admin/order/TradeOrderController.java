@@ -126,6 +126,14 @@ public class TradeOrderController {
         return success(true);
     }
 
+    @PutMapping("/confirm-offline-refund")
+    @Operation(summary = "登记已实际退回的线下全额退款，不发起在线退款")
+    @PreAuthorize("@ss.hasPermission('trade:order:confirm-offline-refund')")
+    public CommonResult<Boolean> confirmOfflineRefund(@javax.validation.Valid @RequestBody TradeOrderOfflineRefundReqVO request) {
+        storeOrderService.confirmRefund(request, getLoginUserId());
+        return success(true);
+    }
+
     @PutMapping("/store-receive")
     @Operation(summary = "店铺确认送达，必须已收款")
     @PreAuthorize("@ss.hasPermission('trade:order:update')")

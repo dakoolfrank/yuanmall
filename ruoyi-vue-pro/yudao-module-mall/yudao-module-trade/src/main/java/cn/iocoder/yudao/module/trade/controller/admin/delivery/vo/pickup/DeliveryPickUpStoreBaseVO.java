@@ -4,11 +4,15 @@ import cn.iocoder.yudao.framework.common.enums.CommonStatusEnum;
 import cn.iocoder.yudao.framework.common.validation.InEnum;
 import cn.iocoder.yudao.framework.common.validation.Mobile;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.AssertTrue;
+import javax.validation.constraints.DecimalMin;
+import javax.validation.constraints.DecimalMax;
 import java.time.LocalTime;
 
 /**
@@ -25,8 +29,7 @@ public class DeliveryPickUpStoreBaseVO {
     @Schema(description = "门店简介", example = "我是门店简介")
     private String introduction;
 
-    @Schema(description = "门店手机", requiredMode = Schema.RequiredMode.REQUIRED, example = "15601892312")
-    @NotBlank(message = "门店手机不能为空")
+    @Schema(description = "门店手机，启用时必填", example = "15601892312")
     @Mobile
     private String phone;
 
@@ -42,22 +45,22 @@ public class DeliveryPickUpStoreBaseVO {
     @NotBlank(message = "门店 logo 不能为空")
     private String logo;
 
-    @Schema(description = "营业开始时间", requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotNull(message = "营业开始时间不能为空")
+    @Schema(description = "营业开始时间，启用时必填")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
     private LocalTime openingTime;
 
-    @Schema(description = "营业结束时间", requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotNull(message = "营业结束时间不能为空")
+    @Schema(description = "营业结束时间，启用时必填")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "HH:mm")
     private LocalTime closingTime;
 
-    @Schema(description = "纬度", requiredMode = Schema.RequiredMode.REQUIRED, example = "5.88")
-    @NotNull(message = "纬度不能为空")
+    @Schema(description = "纬度，启用时必填", example = "5.88")
+    @DecimalMin(value = "-90", message = "纬度不能小于 -90")
+    @DecimalMax(value = "90", message = "纬度不能大于 90")
     private Double latitude;
 
-    @Schema(description = "经度", requiredMode = Schema.RequiredMode.REQUIRED, example = "6.99")
-    @NotNull(message = "经度不能为空")
+    @Schema(description = "经度，启用时必填", example = "6.99")
+    @DecimalMin(value = "-180", message = "经度不能小于 -180")
+    @DecimalMax(value = "180", message = "经度不能大于 180")
     private Double longitude;
 
     @Schema(description = "门店状态", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
@@ -65,4 +68,12 @@ public class DeliveryPickUpStoreBaseVO {
     @InEnum(CommonStatusEnum.class)
     private Integer status;
 
+    @JsonIgnore
+    @AssertTrue(message = "启用自提点前请补齐联系电话、营业时间和地图位置")
+    public boolean isReadyToEnable() {
+        return !Integer.valueOf(CommonStatusEnum.ENABLE.getStatus()).equals(status)
+                || (phone != null && !phone.trim().isEmpty()
+                    && openingTime != null && closingTime != null
+                    && latitude != null && longitude != null);
+    }
 }

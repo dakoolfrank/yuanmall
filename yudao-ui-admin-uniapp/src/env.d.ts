@@ -29,6 +29,14 @@ interface ImportMetaEnv {
   readonly VITE_SERVER_HAS_API_PREFIX: 'true' | 'false'
   /** 认证模式，'single' | 'double' ==> 单token | 双token */
   readonly VITE_AUTH_MODE: 'single' | 'double'
+  /** 自提位置选择：高德 Web 端（JS API）Key */
+  readonly VITE_AMAP_KEY?: string
+  /** 与高德浏览器 Key 对应的安全密钥；仅在本机 env 文件配置 */
+  readonly VITE_AMAP_SECURITY_JSCODE?: string
+  /** 高德 Web 端（JS API）Key，服务器现有命名 */
+  readonly VITE_PUBLIC_AMAP_KEY_JS?: string
+  /** 对应浏览器 Key 的安全密钥，服务器现有命名 */
+  readonly VITE_PUBLIC_AMAP_CS_JS?: string
   /** 是否清除console */
   readonly VITE_DELETE_CONSOLE: string
   /** App 端 IM 音视频通话试验开关，未配置即关闭 */

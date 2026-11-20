@@ -15,7 +15,8 @@ const loggingOut = ref(false)
 const entries = computed(() => [
   { title: '商品', permission: 'product:spu:query', path: '/pages-mall/product/spu/index' },
   { title: '订单', permission: 'trade:order:query', path: '/pages-mall/trade/order/index' },
-  { title: '售后', permission: 'trade:after-sale:query', path: '/pages-mall/trade/after-sale/index' },
+  { title: '会员', permission: 'member:user:query', path: '/pages-member/user/index' },
+  { title: '设置', permission: 'trade:delivery:pick-up-store:query', path: '/pages-mall/trade/delivery/pick-up-store/index' },
 ].filter(item => hasAccessByCodes([item.permission])))
 function openPage(path: string) {
   uni.navigateTo({ url: path })

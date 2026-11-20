@@ -56,6 +56,12 @@ public class TradeOrderDO extends BaseDO {
     private Long receiptOperatorId;
     private LocalDateTime receiptTime;
 
+    /** 线下退款登记，原付款记录保留，不是支付渠道退款。 */
+    private String offlineRefundMethod;
+    private Integer offlineRefundAmount;
+    private Long offlineRefundOperatorId;
+    private LocalDateTime offlineRefundTime;
+
 
     /**
      * 订单流水号

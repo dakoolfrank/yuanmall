@@ -25,6 +25,12 @@ public class TradeOrderBaseVO {
     private Long receiptOperatorId;
     private LocalDateTime receiptTime;
 
+    /** 线下退款登记，原付款记录保留，不是支付渠道退款。 */
+    private String offlineRefundMethod;
+    private Integer offlineRefundAmount;
+    private Long offlineRefundOperatorId;
+    private LocalDateTime offlineRefundTime;
+
 
 
     @Schema(description = "订单流水号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1146347329394184195")
@@ -50,6 +56,9 @@ public class TradeOrderBaseVO {
 
     @Schema(description = "订单状态", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
     private Integer status;
+
+    @Schema(description = "退款状态，0 为未退款")
+    private Integer refundStatus;
 
     @Schema(description = "购买的商品数量", requiredMode = Schema.RequiredMode.REQUIRED, example = "10")
     private Integer productCount;

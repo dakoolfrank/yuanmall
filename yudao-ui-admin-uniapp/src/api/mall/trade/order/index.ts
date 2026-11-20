@@ -37,6 +37,7 @@ export interface TradeOrderLog {
 
 /** 交易订单 */
 export interface TradeOrder {
+  refundStatus?: number
   id?: number
   no?: string
   createTime?: string
@@ -57,6 +58,10 @@ export interface TradeOrder {
   receiptAmount?: number
   receiptOperatorId?: number
   receiptTime?: string
+  offlineRefundMethod?: 'cash' | 'scan'
+  offlineRefundAmount?: number
+  offlineRefundOperatorId?: number
+  offlineRefundTime?: string
   payStatus?: boolean
   payTime?: string
   payChannelCode?: string
@@ -172,6 +177,10 @@ export function startStoreDelivery(id: number) {
 }
 export function confirmOfflinePayment(data: { id: number, amount: number, method: 'cash' | 'scan' }) {
   return http.put<boolean>('/trade/order/confirm-offline-payment', data)
+}
+/** 仅登记已经在线下实际退回的款项，不调用微信退款。 */
+export function confirmOfflineRefund(data: { id: number, amount: number, method: 'cash' | 'scan' }) {
+  return http.put<boolean>('/trade/order/confirm-offline-refund', data)
 }
 export function completeStoreDelivery(id: number) {
   return http.put<boolean>(`/trade/order/store-receive?id=${id}`)

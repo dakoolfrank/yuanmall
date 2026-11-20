@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font:
+          15px system-ui,
+          sans-serif;
+        color: #293b32;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+      }
+      form {
+        display: flex;
+        gap: 8px;
+        padding: 12px;
+      }
+      input {
+        min-width: 0;
+        flex: 1;
+        border: 1px solid #dce4dd;
+        border-radius: 8px;
+        padding: 12px;
+        font: inherit;
+      }
+      button {
+        cursor: pointer;
+        border: 0;
+        border-radius: 8px;
+        padding: 12px 18px;
+        font: inherit;
+        background: #386b55;
+        color: #fff;
+      }
+      button:disabled {
+        cursor: default;
+        opacity: 0.45;
+      }
+      #status {
+        margin: 0;
+        padding: 0 12px 10px;
+        font-size: 13px;
+        color: #6d7c72;
+      }
+      #status.error {
+        color: #b64a39;
+      }
+      #workspace {
+        min-height: 0;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      #results {
+        flex-shrink: 0;
+        max-height: 155px;
+        overflow: auto;
+      }
+      #results button {
+        width: 100%;
+        text-align: left;
+        border-radius: 0;
+        background: #fff;
+        color: #293b32;
+        border-bottom: 1px solid #edf1ed;
+      }
+      #results small {
+        display: block;
+        margin-top: 4px;
+        color: #778174;
+      }
+      #map {
+        min-height: 150px;
+        flex: 1;
+        background: #f3f6f3;
+      }
+      footer {
+        padding: 12px;
+        border-top: 1px solid #edf1ed;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+      }
+      #selected {
+        min-height: 22px;
+        margin: 0 0 10px;
+      }
+      #confirm {
+        width: 100%;
+      }
+      @media (min-width: 760px) {
+        #workspace {
+          flex-direction: row;
+        }
+        #results:not(:empty) {
+          width: 300px;
+          max-height: none;
+          border-right: 1px solid #edf1ed;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <form id="search-form">
+      <input id="query" aria-label="搜索自提地址" placeholder="输入地址或门店名称" maxlength="200" />
+      <button id="search" disabled>搜索</button>
+    </form>
+    <p id="status" role="status">正在加载高德地图…</p>
+    <div id="workspace">
+      <div id="results"></div>
+      <div id="map"></div>
+    </div>
+    <footer>
+      <p id="selected">搜索后选择结果，或点地图标记实际门店位置</p>
+      <button id="confirm" disabled>确认此位置</button>
+    </footer>
+    <script>
+      const options = /* PICKER_CONFIG */ {}
+      const query = document.getElementById('query')
+      const status = document.getElementById('status')
+      const results = document.getElementById('results')
+      const confirmButton = document.getElementById('confirm')
+      const selectedText = document.getElementById('selected')
+      let map, marker, geocoder, placeSearch, selected, searchTimer
+      let searchVersion = 0,
+        selectionVersion = 0,
+        failed = false
+      const loadTimer = setTimeout(() => fail('高德地图加载超时，请关闭后重试。'), 15000)
+
+      function message(text, error = false) {
+        status.textContent = text
+        status.className = error ? 'error' : ''
+      }
+      function fail(text) {
+        failed = true
+        clearTimeout(loadTimer)
+        clearTimeout(searchTimer)
+        searchVersion++
+        selectionVersion++
+        selected = null
+        confirmButton.disabled = true
+        document.getElementById('search').disabled = true
+        message(text, true)
+      }
+      // 不展示 SDK 原始错误，以免其消息中带出 Key 或请求参数。
+      window.alert = () => fail('高德地图授权失败，请检查 Key、安全密钥和域名授权。')
+      window.addEventListener('error', () => fail('高德地图暂不可用，请关闭后重试。'))
+
+      function validPoint(point) {
+        return (
+          point &&
+          Number.isFinite(point.lng) &&
+          Number.isFinite(point.lat) &&
+          point.lng >= -180 &&
+          point.lng <= 180 &&
+          point.lat >= -90 &&
+          point.lat <= 90
+        )
+      }
+      function choose(point, label) {
+        if (failed || !validPoint(point)) return
+        ++searchVersion
+        clearTimeout(searchTimer)
+        const version = ++selectionVersion
+        selected = { longitude: point.lng, latitude: point.lat, label: label || '已标记门店位置' }
+        if (marker) map.remove(marker)
+        marker = new AMap.Marker({ position: [point.lng, point.lat] })
+        map.add(marker)
+        selectedText.textContent = selected.label
+        confirmButton.disabled = false
+        message('已标记位置，可在地图继续调整，确认后回到表单保存。')
+        if (!label) {
+          geocoder.getAddress([point.lng, point.lat], (state, result) => {
+            if (version !== selectionVersion || failed) return
+            if (state === 'complete' && result.regeocode?.formattedAddress) {
+              selected.label = result.regeocode.formattedAddress
+              selectedText.textContent = selected.label
+            }
+          })
+        }
+      }
+      function search() {
+        const keyword = query.value.trim()
+        if (!keyword || failed || !placeSearch) return
+        const version = ++searchVersion
+        ++selectionVersion
+        selected = null
+        confirmButton.disabled = true
+        selectedText.textContent = '请选择搜索结果，或点地图标记实际门店位置'
+        if (marker) {
+          map.remove(marker)
+          marker = null
+        }
+        results.replaceChildren()
+        message('正在搜索…')
+        clearTimeout(searchTimer)
+        searchTimer = setTimeout(() => {
+          if (version !== searchVersion) return
+          ++searchVersion
+          message('搜索超时，请重试或在地图上选点。', true)
+        }, 12000)
+        placeSearch.search(keyword, (state, result) => {
+          if (version !== searchVersion || failed) return
+          clearTimeout(searchTimer)
+          const pois = state === 'complete' ? result.poiList?.pois || [] : []
+          const located = pois.filter((poi) => validPoint(poi.location))
+          for (const poi of located) {
+            const row = document.createElement('button')
+            row.type = 'button'
+            const title = document.createElement('span')
+            title.textContent = poi.name
+            const address = document.createElement('small')
+            address.textContent = [
+              poi.pname,
+              poi.cityname,
+              poi.adname,
+              typeof poi.address === 'string' ? poi.address : '',
+            ]
+              .filter(Boolean)
+              .join(' ')
+            row.append(title, address)
+            row.onclick = () => {
+              choose(poi.location, poi.name + (address.textContent ? ' · ' + address.textContent : ''))
+              map.setZoomAndCenter(18, poi.location)
+            }
+            results.append(row)
+          }
+          if (located.length) {
+            // 搜索只定位视图，不自动选中第一个结果。
+            map.setZoomAndCenter(16, located[0].location)
+            message('请选择正确的驿站；位置不准可直接点地图调整。')
+          } else if (state === 'error') {
+            message('搜索暂不可用，请检查高德授权或稍后重试。', true)
+          } else {
+            message('未找到门店，可缩短关键词，或在地图上选点。')
+            geocoder.getLocation(keyword, (state, result) => {
+              if (version === searchVersion && state === 'complete' && result.geocodes?.[0]) {
+                map.setZoomAndCenter(16, result.geocodes[0].location)
+              }
+            })
+          }
+        })
+      }
+      document.getElementById('search-form').onsubmit = (event) => {
+        event.preventDefault()
+        search()
+      }
+      confirmButton.onclick = () => {
+        if (!failed && selected) parent.postMessage({ type: options.messageType, ...selected }, options.parentOrigin)
+      }
+      window._AMapSecurityConfig = { securityJsCode: options.securityJsCode }
+      window.initPickUpMap = () => {
+        if (failed) return
+        try {
+          map = new AMap.Map('map', { zoom: 4, center: [104, 35], viewMode: '2D' })
+          map.on('error', () => fail('高德地图授权或加载失败，请检查地图配置。'))
+          AMap.plugin(['AMap.PlaceSearch', 'AMap.Geocoder'], () => {
+            if (failed) return
+            clearTimeout(loadTimer)
+            geocoder = new AMap.Geocoder({ city: options.city || '全国' })
+            placeSearch = new AMap.PlaceSearch({ city: options.city || '全国', pageSize: 10 })
+            map.on('click', (event) => choose(event.lnglat))
+            document.getElementById('search').disabled = false
+            query.value = options.address
+            if (options.point) {
+              choose({ lng: options.point.longitude, lat: options.point.latitude }, '已保存的门店位置')
+              map.setZoomAndCenter(17, [options.point.longitude, options.point.latitude])
+              message('可点地图调整位置，确认后回到表单保存。')
+            } else if (options.address) {
+              search()
+            } else {
+              message('搜索地址后选点，或直接点地图标记实际门店位置。')
+            }
+          })
+        } catch {
+          fail('高德地图初始化失败，请关闭后重试。')
+        }
+      }
+      const sdk = document.createElement('script')
+      sdk.src = 'https://webapi.amap.com/maps?v=2.0&key=' + encodeURIComponent(options.key) + '&callback=initPickUpMap'
+      sdk.onerror = () => fail('高德地图加载失败，请检查网络后重试。')
+      document.head.append(sdk)
+    </script>
+  </body>
+</html>

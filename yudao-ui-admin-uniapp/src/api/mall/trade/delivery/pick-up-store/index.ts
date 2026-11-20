@@ -11,10 +11,10 @@ export interface DeliveryPickUpStore {
   areaName?: string
   detailAddress?: string
   logo?: string
-  openingTime?: string
-  closingTime?: string
-  latitude?: number
-  longitude?: number
+  openingTime?: string | null
+  closingTime?: string | null
+  latitude?: number | null
+  longitude?: number | null
   status?: number
   verifyUserIds?: number[]
   verifyUsers?: { id?: number, nickname?: string }[]

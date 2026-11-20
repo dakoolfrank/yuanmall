@@ -17,6 +17,7 @@ public enum TradeOrderOperateTypeEnum {
     ADMIN_UPDATE_PRICE(2, "订单价格 {oldPayPrice} 修改，调整价格 {adjustPrice}，实际支付金额为 {newPayPrice} 元"),
     MEMBER_PAY(10, "用户付款成功"),
     ADMIN_OFFLINE_RECEIPT(12, "管理员确认见面收款，方式：{receiptMethod}，金额：{receiptAmount} 分"),
+    ADMIN_OFFLINE_REFUND(13, "管理员登记已线下退款，方式：{refundMethod}，金额：{refundAmount} 分"),
     ADMIN_STORE_DELIVERY(21, "店铺开始配送"),
     ADMIN_STORE_RECEIVE(35, "店铺确认送达"),
     ADMIN_UPDATE_ADDRESS(11, "收货地址修改"),
