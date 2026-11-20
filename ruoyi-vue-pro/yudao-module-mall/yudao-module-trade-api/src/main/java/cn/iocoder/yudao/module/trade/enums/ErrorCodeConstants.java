@@ -19,6 +19,10 @@ public interface ErrorCodeConstants {
     ErrorCode ORDER_RECEIVE_FAIL_NOT_PAID = new ErrorCode(1_011_000_096, "订单尚未付款，不能确认完成");
     ErrorCode OFFLINE_REFUND_INVALID = new ErrorCode(1_011_000_097, "仅已取消且已收款的见面订单可登记全额线下退款，请核对方式、金额及订单");
     ErrorCode OFFLINE_REFUND_CONFLICT = new ErrorCode(1_011_000_098, "该订单已登记退款，请刷新核对，勿重复退钱");
+    ErrorCode STORE_DELIVERY_OUT_OF_RANGE = new ErrorCode(1_011_000_099, "该地址超出配送范围，请选择自提");
+    ErrorCode STORE_DELIVERY_LOCATION_REQUIRED = new ErrorCode(1_011_000_100, "请先在收货地址中补选地图位置，或选择自提");
+    ErrorCode STORE_DELIVERY_RANGE_NOT_READY = new ErrorCode(1_011_000_101, "店铺配送范围暂未配置完成，请选择自提或联系店主");
+    ErrorCode STORE_DELIVERY_ADDRESS_NOT_FOUND = new ErrorCode(1_011_000_102, "收货地址不存在或不属于当前用户，请重新选择");
 
     // ========== Order 模块 1-011-000-000 ==========
     ErrorCode ORDER_ITEM_NOT_FOUND = new ErrorCode(1_011_000_010, "交易订单项不存在");

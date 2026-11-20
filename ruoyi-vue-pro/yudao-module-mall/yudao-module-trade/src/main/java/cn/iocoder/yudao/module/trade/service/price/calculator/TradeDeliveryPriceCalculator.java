@@ -52,6 +52,9 @@ public class TradeDeliveryPriceCalculator implements TradePriceCalculator {
     private TradeConfigService tradeConfigService;
 
     @Resource
+    private cn.iocoder.yudao.module.trade.service.delivery.StoreDeliveryRangeService storeDeliveryRangeService;
+
+    @Resource
     private cn.iocoder.yudao.module.trade.framework.order.config.TradeOrderProperties orderProperties;
 
     @Override
@@ -69,10 +72,7 @@ public class TradeDeliveryPriceCalculator implements TradePriceCalculator {
                     && !item.getDeliveryTypes().contains(DeliveryTypeEnum.EXPRESS.getType()))) {
                 throw exception(PRICE_CALCULATE_DELIVERY_PRICE_TYPE_ILLEGAL);
             }
-            if (param.getAddressId() != null) {
-                MemberAddressRespDTO address = addressApi.getAddress(param.getAddressId(), param.getUserId());
-                Assert.notNull(address, "收件地址不存在或不属于当前用户");
-            }
+            result.setDeliveryRange(storeDeliveryRangeService.validate(param.getUserId(), param.getAddressId()));
             // 已确认免费自送，不调用快递模板，不继承模板4的异常运费。
             result.getItems().forEach(item -> item.setDeliveryPrice(0));
             TradePriceCalculatorHelper.recountPayPrice(result.getItems());

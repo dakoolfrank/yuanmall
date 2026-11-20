@@ -33,6 +33,9 @@ public class TradePriceCalculateRespBO {
      */
     private Price price;
 
+    /** 店铺配送资格；自提/快递不使用此规则。 */
+    private cn.iocoder.yudao.module.trade.service.delivery.bo.StoreDeliveryRangeCheckBO deliveryRange;
+
     /**
      * 订单项数组
      */

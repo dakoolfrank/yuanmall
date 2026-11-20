@@ -56,6 +56,43 @@ public class TradeDeliveryPriceCalculatorTest extends BaseMockitoUnitTest {
     private TradeConfigService tradeConfigService;
 
     @Mock
+    private cn.iocoder.yudao.module.trade.service.delivery.StoreDeliveryRangeService storeDeliveryRangeService;
+
+    @Test
+    void storeDeliveryChecksRangeBeforeFreeDelivery() {
+        reqBO.setDeliveryType(DeliveryTypeEnum.STORE.getType());
+        when(orderProperties.getStoreDeliveryEnabled()).thenReturn(true);
+        when(storeDeliveryRangeService.validate(1L, 10L)).thenThrow(
+                new cn.iocoder.yudao.framework.common.exception.ServiceException(
+                        cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.STORE_DELIVERY_OUT_OF_RANGE));
+        assertServiceException(() -> calculator.calculate(reqBO, resultBO),
+                cn.iocoder.yudao.module.trade.enums.ErrorCodeConstants.STORE_DELIVERY_OUT_OF_RANGE);
+        org.mockito.Mockito.verifyNoInteractions(deliveryExpressTemplateService);
+    }
+
+    @Test
+    void eligibleStoreDeliveryIsFreeAndCarriesResult() {
+        reqBO.setDeliveryType(DeliveryTypeEnum.STORE.getType());
+        when(orderProperties.getStoreDeliveryEnabled()).thenReturn(true);
+        cn.iocoder.yudao.module.trade.service.delivery.bo.StoreDeliveryRangeCheckBO check =
+                new cn.iocoder.yudao.module.trade.service.delivery.bo.StoreDeliveryRangeCheckBO()
+                        .setAvailable(true).setDistanceMeters(2000).setRadiusMeters(5000);
+        when(storeDeliveryRangeService.validate(1L, 10L)).thenReturn(check);
+        calculator.calculate(reqBO, resultBO);
+        org.junit.jupiter.api.Assertions.assertSame(check, resultBO.getDeliveryRange());
+        org.junit.jupiter.api.Assertions.assertEquals(0, resultBO.getPrice().getDeliveryPrice());
+        org.mockito.Mockito.verifyNoInteractions(deliveryExpressTemplateService);
+    }
+
+    @Test
+    void pickupDoesNotUseDeliveryRadius() {
+        reqBO.setDeliveryType(DeliveryTypeEnum.PICK_UP.getType()).setPickUpStoreId(5L);
+        when(deliveryPickUpStoreService.getDeliveryPickUpStore(5L)).thenReturn(new DeliveryPickUpStoreDO().setStatus(0));
+        calculator.calculate(reqBO, resultBO);
+        org.mockito.Mockito.verifyNoInteractions(storeDeliveryRangeService);
+    }
+
+    @Mock
     private cn.iocoder.yudao.module.trade.framework.order.config.TradeOrderProperties orderProperties;
 
     private TradePriceCalculateReqBO reqBO;
@@ -428,8 +465,8 @@ public class TradeDeliveryPriceCalculatorTest extends BaseMockitoUnitTest {
     public void storeDeliveryIsFreeAndDoesNotUseExpressTemplate() {
         reqBO.setDeliveryType(3);
         when(orderProperties.getStoreDeliveryEnabled()).thenReturn(true);
-        when(addressApi.getAddress(eq(reqBO.getAddressId()), eq(reqBO.getUserId())))
-                .thenReturn(new MemberAddressRespDTO().setId(reqBO.getAddressId()));
+        when(storeDeliveryRangeService.validate(reqBO.getUserId(), reqBO.getAddressId()))
+                .thenReturn(new cn.iocoder.yudao.module.trade.service.delivery.bo.StoreDeliveryRangeCheckBO().setAvailable(true));
         resultBO.getItems().forEach(item -> item.setDeliveryTypes(java.util.Arrays.asList(1)).setDeliveryPrice(5000000));
         calculator.calculate(reqBO, resultBO);
         assertThat(resultBO.getPrice().getDeliveryPrice()).isEqualTo(0);

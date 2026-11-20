@@ -31,3 +31,20 @@ export function getTradeConfig() {
 export function saveTradeConfig(data: TradeConfig) {
   return http.put<boolean>('/trade/config/save', data as Record<string, any>)
 }
+
+export interface StoreDeliveryRangeConfig {
+  pickUpStoreId?: number
+  storeName?: string
+  radiusMeters?: number
+  centerLatitude?: number
+  centerLongitude?: number
+  enabled?: boolean
+}
+
+export function getStoreDeliveryRange() {
+  return http.get<StoreDeliveryRangeConfig>('/trade/config/store-delivery-range')
+}
+
+export function saveStoreDeliveryRange(data: { pickUpStoreId: number, radiusMeters: number }) {
+  return http.put<boolean>('/trade/config/store-delivery-range', data)
+}

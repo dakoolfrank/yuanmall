@@ -11,9 +11,10 @@
     <wd-cell-group border>
       <wd-cell title="分类名称" :value="formData.name || '-'" />
       <wd-cell title="分类排序" :value="formData.sort != null ? String(formData.sort) : '-'" />
-      <wd-cell title="开启状态">
-        <dict-tag v-if="formData.status != null" :type="DICT_TYPE.COMMON_STATUS" :value="formData.status" />
-        <text v-else>-</text>
+      <wd-cell v-if="formData.status === CommonStatusEnum.DISABLE" title="分类状态">
+        <wd-tag type="warning" variant="plain">
+          停用
+        </wd-tag>
       </wd-cell>
       <wd-cell title="创建时间" :value="formatDateTime(formData.createTime) || '-'" />
     </wd-cell-group>
@@ -41,7 +42,7 @@ import { onMounted, ref } from 'vue'
 import { deleteProductCategory, getProductCategory } from '@/api/mall/product/category'
 import { useAccess } from '@/hooks/useAccess'
 import { delay, navigateBackPlus } from '@/utils'
-import { DICT_TYPE } from '@/utils/constants'
+import { CommonStatusEnum } from '@/utils/constants'
 import { formatDateTime } from '@/utils/date'
 
 const props = defineProps<{ id?: number | any }>()

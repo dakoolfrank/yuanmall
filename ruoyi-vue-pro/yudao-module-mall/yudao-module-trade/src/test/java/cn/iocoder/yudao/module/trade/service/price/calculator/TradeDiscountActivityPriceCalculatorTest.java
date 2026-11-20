@@ -41,6 +41,24 @@ public class TradeDiscountActivityPriceCalculatorTest extends BaseMockitoUnitTes
     private MemberUserApi memberUserApi;
 
     @Test
+    void disabledMembershipDoesNotDiscountEvenWithOldPercent() {
+        cn.iocoder.yudao.module.member.api.level.dto.MemberLevelRespDTO level =
+                new cn.iocoder.yudao.module.member.api.level.dto.MemberLevelRespDTO()
+                        .setStatus(1).setDiscountPercent(75);
+        assertEquals(0, tradeDiscountActivityPriceCalculator.calculateVipPrice(level,
+                new TradePriceCalculateRespBO.OrderItem().setPayPrice(500).setCount(1)));
+    }
+
+    @Test
+    void fullPriceMembershipDoesNotGeneratePromotion() {
+        cn.iocoder.yudao.module.member.api.level.dto.MemberLevelRespDTO level =
+                new cn.iocoder.yudao.module.member.api.level.dto.MemberLevelRespDTO()
+                        .setStatus(0).setDiscountPercent(100);
+        assertEquals(0, tradeDiscountActivityPriceCalculator.calculateVipPrice(level,
+                new TradePriceCalculateRespBO.OrderItem().setPayPrice(500).setCount(1)));
+    }
+
+    @Test
     public void testCalculate() {
         // 准备参数
         TradePriceCalculateReqBO param = new TradePriceCalculateReqBO()

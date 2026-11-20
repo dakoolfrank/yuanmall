@@ -37,6 +37,8 @@ CREATE TABLE IF NOT EXISTS "member_address" (
     "mobile" varchar(20) NOT NULL,
     "area_id" bigint(20) NOT NULL,
     "detail_address" varchar(250) NOT NULL,
+    "latitude" DOUBLE NULL,
+    "longitude" DOUBLE NULL,
     "default_status" bit NOT NULL,
     "create_time" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "creator" varchar(64) DEFAULT '',

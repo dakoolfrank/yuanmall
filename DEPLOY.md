@@ -227,3 +227,25 @@ Admin 通过 Vite HMR 生效：列表右上角“已取消”，下方显示未�
 ## 2026-11-20 订单详情固定文案及重复状态精简
 
 订单详情隐藏“见面付款”字样；配送信息区不再重复顶部已有的待配送、配送中等状态。实际收退款状态、联系人地址及全部业务按钮保留，历史在线付款方式仍显示。单文件 ESLint、7种状态及375/320px浏览器检查通过，报告 `_local/serverdev/detail-no-duplicate-ui-verification.json`。仅 Vite HMR 展示更新，无 Java 重启、数据库修改或真实订单操作。
+
+## 2026-11-20 停用会员等级优惠
+
+当前开发库租户1的青铜/白银/黄金等级已停用，折扣均设为100%。保留原会员关联、积分经验和历史订单优惠；未更新生产库。此项配置即时生效，无需清空Redis或重启。
+
+同一已登录会员的5元商品，公网商品促销与订单试算已验证从375分恢复500分、VIP优惠125分变0；六款商品均不再返回会员促销。原订单、商品、SKU、会员完整记录前后校验一致。私有备份/定向恢复SQL在 `_local/serverdev/backups/disable-member-discount-20261120-143211/`，结果 `_local/serverdev/disable-member-discount-current.json`。
+
+## 2026-11-20 店铺配送直线范围
+
+仅部署当前开发后端和Admin。增量迁移 `ruoyi-vue-pro/sql/mysql/migrations/20261120_store_delivery_range.sql` 为会员地址新增两个可空坐标，为交易配置新增配送中心引用和米制半径。开发库租户1沿用正式自提点5，半径5000米；不猜测或回填顾客历史地址坐标，未修改生产数据库/JAR。
+
+Admin“设置”新增店铺配送范围卡片，可选择已启用自提点、维护公里半径；保存接口只更新中心与半径。后端使用GCJ-02收货位置做直线距离校验，5公里边界包含在可配送范围，超范围/缺定位/无效中心拒绝新配送试算和下单，自提不受此限制。既有订单继续原履约流程。
+
+开发JAR SHA-256：`f9ef7e39471351e428abf5196664e06d549f4c1a972fa590a6a83acae2cd4965`。164项测试通过，包括边界/无定位/地址归属、地址持久化及旧编辑兼容、会员原价、原订单取消/收款/退款回归；新增依赖注入测试覆盖与基础设施同名Mapper的冲突。已恢复服务，公网核对预检查及试算拒绝无定位、鉴权401、自提按原价结算、六款商品无会员优惠。边界正反例使用隔离测试，未给真实订单下单/收款/配送。
+
+最终备份与构建记录 `_local/serverdev/backups/store-range-20261120-150942/`，指针 `_local/serverdev/store-range-current.json`，公网只读报告 `_local/serverdev/store-range-live-read-verification.json`。旧订单、会员、地址文字、库存、钱包、付款/退款记录与日志前后一致；QCC、AGV、Nginx、Tunnel保持运行。
+
+顾客端配合见 `ruoyi-vue-pro/docs/FRONTEND_DELIVERY_RANGE.md`。当前所有原顾客地址尚无坐标，更新顾客小程序并补定位前店铺配送会提示补位置，自提仍可用。服务器未检出、构建或上传顾客小程序。本次修改未自动提交推送Git。
+
+回退Java时保留新列、后续真实地址定位及配送配置，不恢复旧订单/库存快照。旧JAR没有配送范围校验，恢复前须与顾客端对齐或暂停接收新配送订单。
+
+Admin 三个修改文件 ESLint 通过。浏览器使用拦截的虚拟管理接口验收配送中心回显、5公里默认值、保存按整数米提交、0半径拒绝、保存权限撤销及375px手机无横向溢出；真实配送配置未被界面测试改动。报告 `_local/serverdev/store-range-ui-verification.json`，截图在本机 `/home/ubuntu/.cache/yuanmall-preview/store-range-desktop.png`、`store-range-mobile.png`。

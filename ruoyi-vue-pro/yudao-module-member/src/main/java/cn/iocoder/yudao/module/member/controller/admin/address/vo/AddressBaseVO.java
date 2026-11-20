@@ -30,6 +30,11 @@ public class AddressBaseVO {
     @NotNull(message = "收件详细地址不能为空")
     private String detailAddress;
 
+    @Schema(description = "收货位置纬度，GCJ-02")
+    private Double latitude;
+    @Schema(description = "收货位置经度，GCJ-02")
+    private Double longitude;
+
     @Schema(description = "是否默认", requiredMode = Schema.RequiredMode.REQUIRED, example = "2")
     @NotNull(message = "是否默认不能为空")
     private Boolean defaultStatus;

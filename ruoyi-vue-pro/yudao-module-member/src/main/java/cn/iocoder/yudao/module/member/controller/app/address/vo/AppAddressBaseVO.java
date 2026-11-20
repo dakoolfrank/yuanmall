@@ -1,6 +1,10 @@
 package cn.iocoder.yudao.module.member.controller.app.address.vo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import javax.validation.constraints.AssertTrue;
+import javax.validation.constraints.DecimalMin;
+import javax.validation.constraints.DecimalMax;
 
 import javax.validation.constraints.NotNull;
 
@@ -27,6 +31,23 @@ public class AppAddressBaseVO {
     @Schema(description = "收件详细地址", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull(message = "收件详细地址不能为空")
     private String detailAddress;
+
+    @Schema(description = "收货位置纬度，GCJ-02，与 longitude 一起传；旧地址可不传")
+    @DecimalMin("-90")
+    @DecimalMax("90")
+    private Double latitude;
+
+    @Schema(description = "收货位置经度，GCJ-02，与 latitude 一起传；旧地址可不传")
+    @DecimalMin("-180")
+    @DecimalMax("180")
+    private Double longitude;
+
+    @JsonIgnore
+    @AssertTrue(message = "请在地图选择完整有效的收货位置")
+    public boolean isLocationValid() {
+        return (latitude == null && longitude == null)
+                || (latitude != null && longitude != null && Double.isFinite(latitude) && Double.isFinite(longitude));
+    }
 
     @Schema(description = "是否默认地址", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull(message = "是否默认地址不能为空")

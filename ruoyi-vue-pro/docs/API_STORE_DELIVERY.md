@@ -128,3 +128,13 @@ Admin 保留 Vite HMR，五个修改文件 ESLint 通过，真实浏览器使用
 后端107项测试通过，包含新增现金/扫码完整配送链路、自提收款取货、历史提前收款保留及配送提交与收款并发等待；原有提前收款单测改为明确拒绝。浏览器用虚拟订单走通开始配送→登记收款→确认送达，旧 `markPaid=1` 链接在状态10不能打开收款，7种状态、手机布局及退款回归通过。测试未对真实订单发起操作。
 
 仅打包重启开发后端，无数据库迁移。开发 JAR SHA-256 为 `819edced51348b722b636f6a5e590966b63d51b9456261d59f016bc36de6c0c4`，备份 `_local/serverdev/backups/dispatch-first-20261120-100934/`，指针 `_local/serverdev/dispatch-first-current.json`。订单、收款、退款、SKU/SPU库存、钱包和日志快照一致，生产 JAR 未变。验证报告为 `_local/serverdev/dispatch-first-workflow-ui-verification.json`、`dispatch-first-layout-verification.json`、`dispatch-first-deployed-build.json`。历史状态10已收款订单允许继续开始配送，保留实际收款信息，不清空、不重复收款。
+
+## 2026-11-20 原价销售与5公里店铺配送
+
+会员折扣已在当前开发库租户1停用：青铜/白银/黄金停用且折扣恢复100%，保留会员关系与原订单金额。商品结算不再返回会员等级促销；历史优惠不清除。
+
+新店铺配送以设置中的自提点为中心，直线距离≤配置半径才可免费配送；当前5000米，超出禁止配送但允许自提。后端在配送计价阶段校验，覆盖试算和创建；不影响旧订单配送/收款/完成，也不检查自提半径。
+
+地址增加成对可空的 `latitude/longitude`（GCJ-02）；新增配送预检查 `GET /app-api/trade/delivery/store-range?addressId=...`。Admin 的 `GET/PUT /admin-api/trade/config/store-delivery-range` 仅保存中心与整数米半径，沿用交易设置权限，不回写其他交易设置。
+
+完整请求、响应、错误码1011000099–1011000102、旧地址兼容及顾客小程序工作指令见 [顾客端配送范围接口约定](FRONTEND_DELIVERY_RANGE.md)。顾客端需重新编译上传；后端部署不代表顾客端选点界面已经更新。

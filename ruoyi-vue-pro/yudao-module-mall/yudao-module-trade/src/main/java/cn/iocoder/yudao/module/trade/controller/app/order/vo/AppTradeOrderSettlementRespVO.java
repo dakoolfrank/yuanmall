@@ -13,6 +13,8 @@ import java.util.List;
 @Schema(description = "用户 App - 交易订单结算信息 Response VO")
 @Data
 public class AppTradeOrderSettlementRespVO {
+    @Schema(description = "店铺配送范围结果，直线距离单位米；自提不返回")
+    private cn.iocoder.yudao.module.trade.service.delivery.bo.StoreDeliveryRangeCheckBO deliveryRange;
 
     @Schema(description = "交易类型", requiredMode = Schema.RequiredMode.REQUIRED, example = "1") // 对应 TradeOrderTypeEnum 枚举
     private Integer type;
@@ -126,6 +128,9 @@ public class AppTradeOrderSettlementRespVO {
 
         @Schema(description = "详细地址", requiredMode = Schema.RequiredMode.REQUIRED, example = "望京悠乐汇 A 座")
         private String detailAddress;
+
+        private Double latitude;
+        private Double longitude;
 
         @Schema(description = "是否默认收件地址", requiredMode = Schema.RequiredMode.REQUIRED, example = "true")
         private Boolean defaultStatus;

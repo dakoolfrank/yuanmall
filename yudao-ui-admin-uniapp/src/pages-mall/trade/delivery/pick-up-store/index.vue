@@ -2,10 +2,12 @@
   <view class="yd-page-container yd-page-container-paging">
     <!-- 顶部导航栏 -->
     <wd-navbar
-      title="自提门店"
+      title="设置"
       left-arrow placeholder safe-area-inset-top fixed
       @click-left="handleBack"
     />
+
+    <StoreDeliveryRange />
 
     <!-- 搜索组件 -->
     <SearchForm @search="handleQuery" @reset="handleReset" />
@@ -80,6 +82,7 @@ import { navigateBackPlus } from '@/utils'
 import { DICT_TYPE } from '@/utils/constants'
 import { isPickUpStoreIncomplete } from '@/utils/pickUpStore'
 import SearchForm from './components/search-form.vue'
+import StoreDeliveryRange from './components/store-delivery-range.vue'
 
 definePage({
   style: {

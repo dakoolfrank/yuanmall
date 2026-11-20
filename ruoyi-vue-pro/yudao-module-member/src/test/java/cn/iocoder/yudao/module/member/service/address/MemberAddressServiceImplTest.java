@@ -17,6 +17,9 @@ import static cn.iocoder.yudao.framework.test.core.util.RandomUtils.randomPojo;
 import static cn.iocoder.yudao.module.member.enums.ErrorCodeConstants.ADDRESS_NOT_EXISTS;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * {@link AddressServiceImpl} 的单元测试类
@@ -31,6 +34,65 @@ public class MemberAddressServiceImplTest extends BaseDbUnitTest {
 
     @Resource
     private MemberAddressMapper addressMapper;
+
+    @Test
+    void coordinatesPersistAndRoundTrip() {
+        AppAddressCreateReqVO request = randomPojo(AppAddressCreateReqVO.class,
+                x -> x.setLatitude(40.137651).setLongitude(116.610765));
+        Long id = addressService.createAddress(298L, request);
+        MemberAddressDO saved = addressService.getAddress(298L, id);
+        assertEquals(40.137651, saved.getLatitude());
+        assertEquals(116.610765, cn.iocoder.yudao.module.member.convert.address.AddressConvert.INSTANCE
+                .convert02(saved).getLongitude());
+        assertEquals(40.137651, cn.iocoder.yudao.module.member.convert.address.AddressConvert.INSTANCE
+                .convert(saved).getLatitude());
+        assertNull(addressService.getAddress(299L, id));
+    }
+
+    @Test
+    void legacyAddressEditClearsStaleCoordinates() {
+        MemberAddressDO original = randomPojo(MemberAddressDO.class,
+                x -> x.setUserId(298L).setLatitude(40D).setLongitude(116D));
+        addressMapper.insert(original);
+        AppAddressUpdateReqVO request = cn.iocoder.yudao.framework.common.util.object.BeanUtils
+                .toBean(original, AppAddressUpdateReqVO.class);
+        request.setDetailAddress("新的收货地址").setLatitude(null).setLongitude(null);
+        addressService.updateAddress(298L, request);
+        MemberAddressDO saved = addressService.getAddress(298L, original.getId());
+        assertNull(saved.getLatitude());
+        assertNull(saved.getLongitude());
+    }
+
+    @Test
+    void contactOnlyEditKeepsCoordinates() {
+        MemberAddressDO original = randomPojo(MemberAddressDO.class,
+                x -> x.setUserId(298L).setLatitude(40D).setLongitude(116D));
+        addressMapper.insert(original);
+        AppAddressUpdateReqVO request = cn.iocoder.yudao.framework.common.util.object.BeanUtils
+                .toBean(original, AppAddressUpdateReqVO.class);
+        request.setName("新联系人").setLatitude(null).setLongitude(null);
+        addressService.updateAddress(298L, request);
+        assertEquals(40D, addressService.getAddress(298L, original.getId()).getLatitude());
+        assertEquals(116D, addressService.getAddress(298L, original.getId()).getLongitude());
+    }
+
+    @Test
+    void locationValidationSupportsLegacyButRejectsPartialOrInvalidPoint() {
+        try (javax.validation.ValidatorFactory factory = javax.validation.Validation.buildDefaultValidatorFactory()) {
+            AppAddressCreateReqVO request = new AppAddressCreateReqVO();
+            request.setName("联系人").setMobile("13800000000").setAreaId(110113L)
+                    .setDetailAddress("收货地址").setDefaultStatus(false);
+            assertTrue(factory.getValidator().validate(request).isEmpty());
+            request.setLatitude(40D);
+            assertFalse(factory.getValidator().validate(request).isEmpty());
+            request.setLongitude(116D);
+            assertTrue(factory.getValidator().validate(request).isEmpty());
+            request.setLatitude(91D);
+            assertFalse(factory.getValidator().validate(request).isEmpty());
+            request.setLatitude(Double.NaN);
+            assertFalse(factory.getValidator().validate(request).isEmpty());
+        }
+    }
 
     @Test
     public void testCreateAddress_success() {

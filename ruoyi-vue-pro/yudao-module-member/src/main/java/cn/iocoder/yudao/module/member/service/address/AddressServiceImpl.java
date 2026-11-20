@@ -12,6 +12,8 @@ import org.springframework.validation.annotation.Validated;
 
 import javax.annotation.Resource;
 import java.util.List;
+import java.util.Objects;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.module.member.enums.ErrorCodeConstants.ADDRESS_NOT_EXISTS;
@@ -49,7 +51,7 @@ public class AddressServiceImpl implements AddressService {
     @Transactional(rollbackFor = Exception.class)
     public void updateAddress(Long userId, AppAddressUpdateReqVO updateReqVO) {
         // 校验存在,校验是否能够操作
-        validAddressExists(userId, updateReqVO.getId());
+        MemberAddressDO existing = validAddressExists(userId, updateReqVO.getId());
 
         // 如果修改的是默认收件地址，则将原默认地址修改为非默认
         if (Boolean.TRUE.equals(updateReqVO.getDefaultStatus())) {
@@ -60,7 +62,14 @@ public class AddressServiceImpl implements AddressService {
 
         // 更新
         MemberAddressDO updateObj = AddressConvert.INSTANCE.convert(updateReqVO);
-        memberAddressMapper.updateById(updateObj);
+        // 旧客户端修改地址文字时不能继续沿用旧位置；仅修改联系人时保留位置。
+        boolean clearLocation = updateReqVO.getLatitude() == null && updateReqVO.getLongitude() == null
+                && (!Objects.equals(existing.getAreaId(), updateReqVO.getAreaId())
+                    || !Objects.equals(existing.getDetailAddress(), updateReqVO.getDetailAddress()));
+        memberAddressMapper.update(updateObj, Wrappers.<MemberAddressDO>lambdaUpdate()
+                .eq(MemberAddressDO::getId, updateReqVO.getId()).eq(MemberAddressDO::getUserId, userId)
+                .set(clearLocation, MemberAddressDO::getLatitude, null)
+                .set(clearLocation, MemberAddressDO::getLongitude, null));
     }
 
     @Override
@@ -71,11 +80,12 @@ public class AddressServiceImpl implements AddressService {
         memberAddressMapper.deleteById(id);
     }
 
-    private void validAddressExists(Long userId, Long id) {
+    private MemberAddressDO validAddressExists(Long userId, Long id) {
         MemberAddressDO addressDO = getAddress(userId, id);
         if (addressDO == null) {
             throw exception(ADDRESS_NOT_EXISTS);
         }
+        return addressDO;
     }
 
     @Override

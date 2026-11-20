@@ -64,6 +64,11 @@ public class TradeConfigDO extends BaseDO {
      */
     private Boolean deliveryPickUpEnabled;
 
+    /** 店铺配送中心，引用当前租户的已启用自提点。 */
+    private Long storeDeliveryPickUpStoreId;
+    /** 店铺配送直线半径，单位米。 */
+    private Integer storeDeliveryRadiusMeters;
+
     // ========== 分销相关 ==========
 
     /**

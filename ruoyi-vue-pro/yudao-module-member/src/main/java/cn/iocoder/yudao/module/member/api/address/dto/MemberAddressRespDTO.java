@@ -34,6 +34,9 @@ public class MemberAddressRespDTO {
      * 收件详细地址
      */
     private String detailAddress;
+    /** 收货位置，GCJ-02。 */
+    private Double latitude;
+    private Double longitude;
     /**
      * 是否默认
      */

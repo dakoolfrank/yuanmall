@@ -25,7 +25,9 @@
                 <view class="min-w-0 flex-1 truncate text-32rpx text-[#333] font-semibold">
                   {{ item.name || '-' }}
                 </view>
-                <dict-tag v-if="item.status != null" :type="DICT_TYPE.COMMON_STATUS" :value="item.status" />
+                <wd-tag v-if="item.status === CommonStatusEnum.DISABLE" type="warning" variant="plain">
+                  停用
+                </wd-tag>
               </view>
               <view class="text-26rpx text-[#666]">
                 排序：{{ item.sort ?? '-' }}
@@ -64,7 +66,7 @@ import { onMounted, ref } from 'vue'
 import { getProductCategoryList } from '@/api/mall/product/category'
 import { useAccess } from '@/hooks/useAccess'
 import { navigateBackPlus } from '@/utils'
-import { DICT_TYPE } from '@/utils/constants'
+import { CommonStatusEnum } from '@/utils/constants'
 import SearchForm from './components/search-form.vue'
 
 definePage({
