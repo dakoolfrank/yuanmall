@@ -33,8 +33,13 @@ export function useLoginTenant() {
       website = uni.getAccountInfoSync?.()?.miniProgram?.appId || ''
       // #endif
       const tenant = website ? await getTenantByWebsite(website) : null
-      // A mini-program without a platform binding can only use an explicit deployment setting.
-      const id = website ? parseId(tenant?.id) : parseId(import.meta.env.VITE_APP_DEFAULT_LOGIN_TENANT_ID)
+      let id = website ? parseId(tenant?.id) : parseId(import.meta.env.VITE_APP_DEFAULT_LOGIN_TENANT_ID)
+      // #ifdef MP
+      // Newly registered owner apps can use the explicitly configured store.
+      // This only selects the login context; account/password and permissions remain server-validated.
+      if (!tenant)
+        id = parseId(import.meta.env.VITE_APP_DEFAULT_LOGIN_TENANT_ID)
+      // #endif
       if (!isPositiveId(id))
         throw new Error('Invalid store binding')
       user.setTenantId(id)

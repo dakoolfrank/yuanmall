@@ -55,7 +55,7 @@ import { useUserStore } from '@/store/user'
 import { navigateBackPlus } from '@/utils'
 import { SystemUserSocialTypeEnum } from '@/utils/constants/biz-system-enum'
 import { startH5SocialAuth } from '@/utils/social-login'
-import PasswordForm from './components/password-form.vue'
+import PasswordForm from '@/components/account-password-form/account-password-form.vue'
 
 definePage({
   style: {

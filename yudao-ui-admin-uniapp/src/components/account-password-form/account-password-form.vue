@@ -1,4 +1,5 @@
 <template>
+  <!-- Shared by the main-package home and account security pages. -->
   <wd-popup
     v-model="visible"
     position="bottom"

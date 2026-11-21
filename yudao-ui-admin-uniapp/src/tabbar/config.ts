@@ -94,24 +94,6 @@ export const customTabbarList: CustomTabBarItem[] = [
     icon: 'i-carbon-home',
   },
   {
-    text: '审批',
-    pagePath: 'pages/bpm/index',
-    iconType: 'unocss',
-    icon: 'i-carbon-document',
-  },
-  {
-    text: '通讯录',
-    pagePath: 'pages/contact/index',
-    iconType: 'unocss',
-    icon: 'i-carbon-user-avatar',
-  },
-  {
-    text: '消息',
-    pagePath: 'pages/message/index',
-    iconType: 'unocss',
-    icon: 'i-carbon-chat',
-  },
-  {
     text: '我的',
     pagePath: 'pages/user/index',
     iconType: 'unocss',

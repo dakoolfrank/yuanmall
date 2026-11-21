@@ -2,13 +2,29 @@
   <view class="yd-page-container yd-page-container-paging">
     <!-- 顶部导航栏 -->
     <wd-navbar
-      title="订单管理"
+      :title="memberScoped ? '会员订单' : '订单管理'"
       left-arrow placeholder safe-area-inset-top fixed
       @click-left="handleBack"
     />
 
+    <view class="order-categories">
+      <view class="order-categories__items">
+        <button
+          v-for="category in categories"
+          :key="category.label"
+          class="order-category"
+          :class="{ 'order-category--active': selectedStatus === category.status }"
+          :aria-pressed="selectedStatus === category.status"
+          @click="selectCategory(category.status)"
+        >
+          {{ category.label }}
+        </button>
+      </view>
+    </view>
+
     <!-- 搜索组件 -->
-    <SearchForm @search="handleQuery" @reset="handleReset" />
+    <wd-search v-if="memberScoped" v-model="memberOrderNo" placeholder="搜索该会员的订单号" hide-cancel @search="handleMemberOrderSearch" @clear="handleMemberOrderSearch" />
+    <SearchForm v-else :status="selectedStatus" @search="handleQuery" @reset="handleReset" />
 
     <!-- 分页列表 -->
     <z-paging
@@ -79,16 +95,19 @@
 <script lang="ts" setup>
 import type { TradeOrder } from '@/api/mall/trade/order'
 import { onUnload } from '@dcloudio/uni-app'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { getTradeOrderPage } from '@/api/mall/trade/order'
 import { getDictLabel } from '@/hooks/useDict'
 import { useUserStore } from '@/store/user'
 import { formatDisplayMoney } from '@/utils/format'
 import { navigateBackPlus } from '@/utils'
-import { DICT_TYPE } from '@/utils/constants'
+import { DICT_TYPE, TradeOrderStatusEnum } from '@/utils/constants'
 import { formatBeijingDateTime } from '@/utils/date'
 import { orderPaymentDescription } from '@/utils/offlinePayment'
+import { isPositiveId, parseId } from '@/utils/id'
 import SearchForm from './components/search-form.vue'
+
+const props = defineProps<{ userId?: string | number }>()
 
 definePage({
   style: {
@@ -97,10 +116,29 @@ definePage({
   },
 })
 
+const memberScoped = computed(() => props.userId != null)
+const memberId = computed(() => parseId(props.userId))
+const categories = [
+  { label: '全部', status: undefined },
+  { label: '待处理', status: TradeOrderStatusEnum.UNDELIVERED },
+  { label: '配送中', status: TradeOrderStatusEnum.DELIVERED },
+  { label: '已完成', status: TradeOrderStatusEnum.COMPLETED },
+  { label: '已取消', status: TradeOrderStatusEnum.CANCELED },
+]
+const selectedStatus = ref<number | undefined>(memberScoped.value ? undefined : TradeOrderStatusEnum.UNDELIVERED)
+const memberOrderNo = ref('')
 const list = ref<TradeOrder[]>([]) // 列表数据
 const pagingRef = ref<any>() // 分页组件引用
 const queryParams = ref<Record<string, any>>({}) // 查询参数
 const userStore = useUserStore()
+let queryVersion = 0
+
+function selectCategory(status?: number) {
+  if (selectedStatus.value === status)
+    return
+  selectedStatus.value = status
+  reload()
+}
 
 /** 右上角标签和说明行使用同一状态文案，避免重复显示。 */
 function orderStatusLabel(order: TradeOrder) {
@@ -130,17 +168,39 @@ function handleBack() {
 
 /** 查询订单列表 */
 async function queryList(pageNo: number, pageSize: number) {
-  try {
-    const data = await getTradeOrderPage({ ...queryParams.value, pageNo, pageSize })
-    pagingRef.value?.completeByTotal(data.list, data.total)
-  } catch {
+  const version = ++queryVersion
+  if (memberScoped.value && !isPositiveId(memberId.value)) {
     pagingRef.value?.complete(false)
+    uni.showToast({ title: '会员编号无效，请返回重试', icon: 'none' })
+    return
   }
+  try {
+    const data = await getTradeOrderPage({
+      ...queryParams.value,
+      status: selectedStatus.value,
+      ...(memberScoped.value ? { userId: memberId.value } : {}),
+      pageNo,
+      pageSize,
+    })
+    if (version === queryVersion)
+      pagingRef.value?.completeByTotal(data.list, data.total)
+  } catch {
+    if (version === queryVersion)
+      pagingRef.value?.complete(false)
+  }
+}
+
+function handleMemberOrderSearch() {
+  const no = memberOrderNo.value.trim()
+  handleQuery(no ? { no } : undefined)
 }
 
 /** 搜索按钮操作 */
 function handleQuery(data?: Record<string, any>) {
-  queryParams.value = { ...data }
+  const { status, ...filters } = data || {}
+  if (data && 'status' in data)
+    selectedStatus.value = status
+  queryParams.value = filters
   reload()
 }
 
@@ -151,7 +211,8 @@ function handleReset() {
 
 /** 重新加载 */
 function reload() {
-  pagingRef.value?.reload()
+  queryVersion++
+  pagingRef.value?.reload().catch(() => {})
 }
 
 /** 查看详情 */
@@ -167,6 +228,40 @@ onMounted(async () => {
 
 /** 卸载 */
 onUnload(() => {
+  queryVersion++
   uni.$off('mall:trade-order:reload', reload)
 })
 </script>
+
+<style scoped>
+.order-categories {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  background: #fff;
+  border-bottom: 1px solid #e7ebe4;
+}
+.order-categories__items {
+  display: flex;
+  max-width: 580px;
+}
+.order-category {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: transparent;
+  color: #58675c;
+  font-size: 14px;
+  line-height: 44px;
+  white-space: nowrap;
+}
+.order-category::after {
+  border: 0;
+}
+.order-category--active {
+  background: #eaf1e9;
+  color: #284d39;
+  font-weight: 600;
+}
+</style>

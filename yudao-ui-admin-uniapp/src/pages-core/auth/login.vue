@@ -70,7 +70,7 @@ import { useLoginTenant } from './useLoginTenant'
 defineOptions({ name: 'LoginPage' })
 const props = defineProps<{ redirect?: string }>()
 definePage({ style: { navigationStyle: 'custom' } })
-const title = import.meta.env.VITE_APP_TITLE || '团团园园杂货铺'
+const title = import.meta.env.VITE_APP_TITLE || '团团园园后台管理'
 const toast = useToast()
 const loading = ref(false)
 const captchaEnabled = import.meta.env.VITE_APP_CAPTCHA_ENABLE === 'true'

@@ -1,4 +1,4 @@
-import type { PageParam, PageResult } from '@/http/types'
+import type { CustomRequestOptions, PageParam, PageResult } from '@/http/types'
 import { http } from '@/http/http'
 
 /** 订单项属性 */
@@ -113,8 +113,8 @@ export interface TradeOrderSummary {
 }
 
 /** 获取交易订单分页列表 */
-export function getTradeOrderPage(params: PageParam) {
-  return http.get<PageResult<TradeOrder>>('/trade/order/page', params)
+export function getTradeOrderPage(params: PageParam, options?: Pick<CustomRequestOptions, 'hideErrorToast'>) {
+  return http.get<PageResult<TradeOrder>>('/trade/order/page', params, undefined, options)
 }
 
 /** 获取交易订单统计 */

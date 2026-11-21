@@ -148,6 +148,7 @@ onMounted(load)
 
 .range-label {
   color: #526258;
+  white-space: nowrap;
 }
 
 .range-center {
@@ -187,6 +188,11 @@ onMounted(load)
 .range-radius {
   flex-wrap: wrap;
   column-gap: 14px;
+}
+
+.range-distance {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .range-input {
@@ -229,7 +235,17 @@ onMounted(load)
   }
 
   .range-row--radius {
-    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .range-row--radius .range-label {
+    line-height: 40px;
+  }
+
+  .range-radius {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
   }
 }
 </style>

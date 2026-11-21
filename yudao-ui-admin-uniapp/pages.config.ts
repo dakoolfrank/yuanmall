@@ -4,7 +4,7 @@ import { tabBar, tabbarCacheEnable } from './src/tabbar/config'
 export default defineUniPages({
   globalStyle: {
     navigationStyle: 'default',
-    navigationBarTitleText: '团团园园杂货铺',
+    navigationBarTitleText: '团团园园后台管理',
     navigationBarBackgroundColor: '#f8f8f8',
     navigationBarTextStyle: 'black',
     backgroundColor: '#FFFFFF',

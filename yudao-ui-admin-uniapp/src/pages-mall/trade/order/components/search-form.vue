@@ -1,6 +1,6 @@
 <template>
   <!-- 搜索框入口 -->
-  <view @click="visible = true">
+  <view @click="openSearch">
     <wd-search :placeholder="placeholder" hide-cancel disabled />
   </view>
 
@@ -98,14 +98,15 @@
 <script lang="ts" setup>
 import { parseId } from '@/utils/id'
 
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { getDictLabel, getIntDictOptions } from '@/hooks/useDict'
 import { getTopPopupModalStyle, getTopPopupStyle } from '@/utils'
-import { DICT_TYPE } from '@/utils/constants'
+import { DICT_TYPE, TradeOrderStatusEnum } from '@/utils/constants'
 import { formatDate, formatDateRange } from '@/utils/date'
 import ExpressSearchPicker from '../../delivery/express/components/express-search-picker.vue'
 import PickUpStoreSearchPicker from '../../delivery/pick-up-store/components/pick-up-store-search-picker.vue'
 
+const props = defineProps<{ status?: number }>()
 const emit = defineEmits<{
   search: [data: Record<string, any>]
   reset: []
@@ -119,7 +120,7 @@ const formData = reactive({
   userId: undefined as string | undefined,
   userNickname: undefined as string | undefined,
   userMobile: undefined as string | undefined,
-  status: undefined as number | undefined,
+  status: props.status,
   type: -1,
   deliveryType: -1,
   payChannelCode: undefined as string | undefined,
@@ -129,6 +130,10 @@ const formData = reactive({
   pickUpVerifyCode: undefined as string | undefined,
   createTime: [undefined, undefined] as [number | undefined, number | undefined],
 }) // 搜索表单数据
+
+watch(() => props.status, (status) => {
+  formData.status = status
+})
 
 /** 搜索条件 placeholder 拼接 */
 const placeholder = computed(() => {
@@ -142,8 +147,8 @@ const placeholder = computed(() => {
   if (formData.userMobile) {
     conditions.push(`手机:${formData.userMobile}`)
   }
-  if (formData.status !== undefined) {
-    conditions.push(`状态:${getDictLabel(DICT_TYPE.TRADE_ORDER_STATUS, formData.status)}`)
+  if (props.status === TradeOrderStatusEnum.UNPAID) {
+    conditions.push('待付款')
   }
   if (formData.type !== -1) {
     conditions.push(`类型:${getDictLabel(DICT_TYPE.TRADE_ORDER_TYPE, formData.type)}`)
@@ -168,6 +173,11 @@ const placeholder = computed(() => {
   }
   return conditions.length > 0 ? conditions.join(' | ') : '搜索订单'
 })
+
+function openSearch() {
+  formData.status = props.status
+  visible.value = true
+}
 
 /** 搜索按钮操作 */
 function handleSearch() {
@@ -195,7 +205,7 @@ function handleReset() {
   formData.userId = undefined
   formData.userNickname = undefined
   formData.userMobile = undefined
-  formData.status = undefined
+  formData.status = props.status
   formData.type = -1
   formData.deliveryType = -1
   formData.payChannelCode = undefined

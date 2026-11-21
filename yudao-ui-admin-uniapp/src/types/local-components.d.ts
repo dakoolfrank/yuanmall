@@ -7,6 +7,7 @@ export {}
 
 declare module 'vue' {
   export interface GlobalComponents {
+    AccountPasswordForm: typeof import('./../components/account-password-form/account-password-form.vue')['default']
     BaiduMap: typeof import('./../components/yudao-ui/yd-map/baidu-map.vue')['default']
     DeptFormPicker: typeof import('./../components/system-select/dept-form-picker.vue')['default']
     DeptSearchPicker: typeof import('./../components/system-select/dept-search-picker.vue')['default']

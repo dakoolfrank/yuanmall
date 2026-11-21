@@ -60,32 +60,29 @@
                 名称信息加载失败 <text class="retry-options" @click="loadOptions">重试</text>
               </view>
               <view class="info-row">
-                <text>分类</text><text>{{ categoryName || formData.categoryId || '未设置' }}</text>
+                <text class="info-label">分类</text><text class="info-value">{{ categoryName || formData.categoryId || '未设置' }}</text>
               </view>
               <view class="info-row">
-                <text>配送方式</text><view><dict-tag v-for="type in formData.deliveryTypes" :key="type" :type="DICT_TYPE.TRADE_DELIVERY_TYPE" :value="type" /></view>
+                <text class="info-label">配送方式</text><view class="info-value"><dict-tag v-for="type in formData.deliveryTypes" :key="type" :type="DICT_TYPE.TRADE_DELIVERY_TYPE" :value="type" /></view>
               </view>
               <view v-if="formData.deliveryTypes?.includes(DeliveryTypeEnum.EXPRESS)" class="info-row">
-                <text>运费模板</text><text>{{ templateName || formData.deliveryTemplateId || '未设置' }}</text>
+                <text class="info-label">运费模板</text><text class="info-value">{{ templateName || formData.deliveryTemplateId || '未设置' }}</text>
               </view>
             </view>
           </view>
         </template>
       </view>
     </scroll-view>
-    <view v-if="formData.id && !loadFailed && hasAccessByCodes(['product:spu:update', 'product:spu:delete'])" class="detail-footer">
+    <view v-if="formData.id && !loadFailed && canUpdate" class="detail-footer">
       <view class="detail-footer__inner">
-        <button v-if="hasAccessByCodes(['product:spu:update'])" class="action-primary" :disabled="busy" @click="handleEdit">
+        <button class="action-primary" :disabled="busy" @click="handleEdit">
           编辑
         </button>
-        <button v-if="hasAccessByCodes(['product:spu:update'])" class="action-secondary" :disabled="busy" @click="handleStatusChange(formData.status === ProductSpuStatusEnum.ENABLE ? ProductSpuStatusEnum.DISABLE : formData.status === ProductSpuStatusEnum.RECYCLE ? ProductSpuStatusEnum.DISABLE : ProductSpuStatusEnum.ENABLE)">
-          {{ formData.status === ProductSpuStatusEnum.ENABLE ? '下架' : formData.status === ProductSpuStatusEnum.RECYCLE ? '恢复' : '上架' }}
+        <button class="action-secondary" :disabled="busy || saleAction.status == null" :loading="statusChanging && pendingStatus === saleAction.status" @click="handleStatusChange(saleAction.status)">
+          {{ saleAction.label }}
         </button>
-        <button v-if="formData.status !== ProductSpuStatusEnum.RECYCLE && hasAccessByCodes(['product:spu:update'])" class="action-recycle" :disabled="busy" @click="handleStatusChange(ProductSpuStatusEnum.RECYCLE)">
-          回收
-        </button>
-        <button v-if="formData.status === ProductSpuStatusEnum.RECYCLE && hasAccessByCodes(['product:spu:delete'])" class="action-recycle" :disabled="busy" @click="handleDelete">
-          永久删除
+        <button class="action-recycle" :disabled="busy || formData.status === ProductSpuStatusEnum.RECYCLE" :loading="statusChanging && pendingStatus === ProductSpuStatusEnum.RECYCLE" @click="handleStatusChange(ProductSpuStatusEnum.RECYCLE)">
+          {{ formData.status === ProductSpuStatusEnum.RECYCLE ? '已回收' : '回收' }}
         </button>
       </view>
     </view>
@@ -101,11 +98,11 @@ import { useDialog } from '@wot-ui/ui/components/wd-dialog'
 import { useToast } from '@wot-ui/ui/components/wd-toast'
 import { computed, onMounted, ref } from 'vue'
 import { getProductCategoryList } from '@/api/mall/product/category'
-import { deleteProductSpu, getProductSpu, updateProductSpuStatus } from '@/api/mall/product/spu'
+import { getProductSpu, updateProductSpuStatus } from '@/api/mall/product/spu'
 import { getSimpleDeliveryExpressTemplateList } from '@/api/mall/trade/delivery/express-template'
 import { useAccess } from '@/hooks/useAccess'
 import { formatDisplayMoney } from '@/utils/format'
-import { delay, navigateBackPlus } from '@/utils'
+import { navigateBackPlus } from '@/utils'
 import { DeliveryTypeEnum, DICT_TYPE, ProductSpuStatusEnum } from '@/utils/constants'
 
 const props = defineProps<{ id?: number | any }>()
@@ -128,20 +125,30 @@ const optionsFailed = ref(false)
 const imageFailed = ref(false)
 const imageAttempt = ref(0)
 const formData = ref<ProductSpu>({}) // 详情数据
-const deleting = ref(false) // 删除状态
 const statusChanging = ref(false) // 回收/恢复切换中
 const categoryNameMap = ref<Record<number, string>>({}) // 分类 id→名称（详情仅返回 categoryId，按 id 映射）
 const templateNameMap = ref<Record<number, string>>({}) // 运费模板 id→名称
 const categoryName = computed(() => formData.value.categoryId != null ? categoryNameMap.value[formData.value.categoryId] : '')
 const templateName = computed(() => formData.value.deliveryTemplateId != null ? templateNameMap.value[formData.value.deliveryTemplateId] : '')
 
-const busy = computed(() => loading.value || statusChanging.value || deleting.value)
+const pendingStatus = ref<number | null>(null)
+const canUpdate = computed(() => hasAccessByCodes(['product:spu:update']))
+const saleAction = computed(() => {
+  if (formData.value.status === ProductSpuStatusEnum.ENABLE)
+    return { label: '下架', status: ProductSpuStatusEnum.DISABLE }
+  if (formData.value.status === ProductSpuStatusEnum.DISABLE)
+    return { label: '上架', status: ProductSpuStatusEnum.ENABLE }
+  if (formData.value.status === ProductSpuStatusEnum.RECYCLE)
+    return { label: '恢复', status: ProductSpuStatusEnum.DISABLE }
+  return { label: '上下架', status: null }
+})
+const busy = computed(() => loading.value || statusChanging.value)
 const statusLabel = computed(() => formData.value.status === ProductSpuStatusEnum.ENABLE ? '已上架' : formData.value.status === ProductSpuStatusEnum.DISABLE ? '已下架' : formData.value.status === ProductSpuStatusEnum.RECYCLE ? '回收站' : '状态未知')
 const stockLabel = computed(() => {
   const stock = formData.value.stock
   return stock == null ? '库存未知' : stock === 0 ? '缺货' : `剩余 ${stock} 件${stock <= 10 ? ' · 库存不足' : ''}`
 })
-const gallery = computed(() => [...new Set(formData.value.sliderPicUrls || [])].filter(pic => pic !== formData.value.picUrl))
+const gallery = computed(() => Array.from(new Set(formData.value.sliderPicUrls || [])).filter(pic => pic !== formData.value.picUrl))
 // 只判断展示是否重复；保留原始字段及含图片等内容的富文本。
 function normalizeText(value?: string) {
   return (value || '').replace(/&nbsp;|&#160;|&#xA0;/gi, ' ').replace(/\s+/g, ' ').trim()
@@ -160,7 +167,7 @@ function retryImage() {
   imageFailed.value = false
 }
 function preview(pic: string) {
-  uni.previewImage({ current: pic, urls: [...new Set([formData.value.picUrl, ...gallery.value].filter(Boolean))] as string[] })
+  uni.previewImage({ current: pic, urls: Array.from(new Set([formData.value.picUrl, ...gallery.value].filter(Boolean))) as string[] })
 }
 function toggleInformation() {
   informationOpen.value = !informationOpen.value
@@ -209,51 +216,47 @@ async function getDetail() {
 
 /** 编辑 */
 function handleEdit() {
-  if (!busy.value && hasAccessByCodes(['product:spu:update']))
-    uni.navigateTo({ url: `/pages-mall/product/spu/form/index?id=${props.id}` })
+  if (!canUpdate.value || busy.value || !formData.value.id)
+    return
+  uni.navigateTo({ url: `/pages-mall/product/spu/form/index?id=${formData.value.id}` })
 }
 
-/** 加入回收站 / 恢复到仓库 */
-async function handleStatusChange(status: number) {
-  if (!props.id || busy.value || !hasAccessByCodes(['product:spu:update']))
-    return
-  const text = status === ProductSpuStatusEnum.RECYCLE ? '放入回收站' : status === ProductSpuStatusEnum.ENABLE ? '上架' : formData.value.status === ProductSpuStatusEnum.RECYCLE ? '恢复为已下架' : '下架'
-  try {
-    await dialog.confirm({ title: '提示', msg: `确定要将该商品${text}吗？` })
-  } catch {
+/** 上下架、回收、恢复均复用状态接口；回收不删除商品。 */
+async function handleStatusChange(status: number | null) {
+  const id = formData.value.id
+  const previousStatus = formData.value.status
+  if (!id || !canUpdate.value || busy.value || status == null) {
     return
   }
+  if (status !== saleAction.value.status
+    && !(status === ProductSpuStatusEnum.RECYCLE && previousStatus != null && [ProductSpuStatusEnum.ENABLE, ProductSpuStatusEnum.DISABLE].includes(previousStatus))) {
+    return
+  }
+  const text = status === ProductSpuStatusEnum.RECYCLE
+    ? '回收'
+    : previousStatus === ProductSpuStatusEnum.RECYCLE
+      ? '恢复'
+      : status === ProductSpuStatusEnum.ENABLE ? '上架' : '下架'
   statusChanging.value = true
+  pendingStatus.value = status
   try {
-    await updateProductSpuStatus({ id: props.id, status })
+    try {
+      await dialog.confirm({ title: `${text}商品`, msg: status === ProductSpuStatusEnum.RECYCLE
+        ? '将商品移入回收站？之后可以恢复。'
+        : `确定${text}该商品吗？` })
+    } catch {
+      return
+    }
+    if (formData.value.id !== id || formData.value.status !== previousStatus || !canUpdate.value) {
+      toast.warning('商品状态已变化，请刷新后重试')
+      return
+    }
+    await updateProductSpuStatus({ id, status })
     toast.success(`${text}成功`)
     uni.$emit('mall:product-spu:reload')
-  } catch {
-    toast.error('操作失败，请重试')
   } finally {
     statusChanging.value = false
-  }
-}
-
-/** 删除 */
-async function handleDelete() {
-  if (!props.id || busy.value || formData.value.status !== ProductSpuStatusEnum.RECYCLE || !hasAccessByCodes(['product:spu:delete']))
-    return
-  try {
-    await dialog.confirm({ title: '永久删除商品', msg: '永久删除后无法从回收站恢复，确定删除该商品吗？' })
-  } catch {
-    return
-  }
-  deleting.value = true
-  try {
-    await deleteProductSpu(props.id)
-    toast.success('删除成功')
-    uni.$emit('mall:product-spu:reload')
-    delay(handleBack)
-  } catch {
-    toast.error('删除失败，请重试')
-  } finally {
-    deleting.value = false
+    pendingStatus.value = null
   }
 }
 
@@ -382,10 +385,12 @@ onUnload(() => {
   overflow-wrap: anywhere;
   overflow: hidden;
 }
+/* #ifdef H5 */
 .product-description :deep(img) {
   max-width: 100%;
   height: auto;
 }
+/* #endif */
 .more-information {
   display: flex;
   align-items: center;
@@ -414,12 +419,12 @@ onUnload(() => {
   font-size: 14px;
   line-height: 1.6;
 }
-.info-row > :last-child {
+.info-value {
   text-align: right;
   overflow-wrap: anywhere;
   min-width: 0;
 }
-.info-row > :first-child {
+.info-label {
   flex-shrink: 0;
 }
 .information {

@@ -1,4 +1,5 @@
 import type { ComponentResolver } from '@uni-helper/vite-plugin-uni-components'
+import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import Uni from '@uni-helper/plugin-uni'
@@ -25,6 +26,7 @@ import UnoCSS from 'unocss/vite'
 import AutoImport from 'unplugin-auto-import/vite'
 import { defineConfig, loadEnv } from 'vite'
 import ViteRestart from 'vite-plugin-restart'
+import pagesConfig from './pages.config'
 import openDevTools from './scripts/open-dev-tools'
 import vitePluginEruda from './scripts/vite-plugin-eruda'
 import { createCopyNativeResourcesPlugin } from './vite-plugins/copy-native-resources'
@@ -97,6 +99,17 @@ export default defineConfig(({ command, mode }) => {
   } = env
   const { WECHAT_DEVTOOLS_CLI_PATH } = localEnv
   const serverDev = mode === 'serverdev' && UNI_PLATFORM === 'h5'
+  const wechatStoreAdmin = mode === 'wechat' && UNI_PLATFORM === 'mp-weixin'
+  const wechatSubPackages = new Set([
+    'src/pages-core',
+    'src/pages-member',
+    'src/pages-pay',
+    'src/pages-mall',
+    'src/pages-statistics',
+  ])
+  // Reset generated routes, keeping easycom available when Uni initializes before UniPages.
+  if (wechatStoreAdmin)
+    writeFileSync(path.resolve('src/pages.json'), `${JSON.stringify({ ...pagesConfig, pages: [{ path: '' }] }, null, 2)}\n`)
 
   return defineConfig({
     envDir: './env', // 自定义env目录
@@ -124,7 +137,11 @@ export default defineConfig(({ command, mode }) => {
         dts: UNI_PLATFORM === 'h5' ? false : 'src/types/local-components.d.ts', // 仅生成项目本地组件类型，避免拉入第三方 Vue 源码
       }),
       UniPages({
-        exclude: ['**/components/**/**.*', '**/sections/**/**.*'],
+        exclude: [
+          '**/components/**/**.*',
+          '**/sections/**/**.*',
+          ...(wechatStoreAdmin ? ['{bpm,contact,message}/**', 'index/{search,settings}/**'] : []),
+        ],
         // pages 目录为 src/pages，分包目录不能配置在pages目录下！！
         // 是个数组，可以配置多个，但是不能为pages里面的目录！！
         subPackages: [
@@ -148,7 +165,7 @@ export default defineConfig(({ command, mode }) => {
           'src/pages-wms', // “仓储管理”模块
           'src/pages-pms', // “项目管理”模块
           'src/pages-oa', // “OA 办公”模块
-        ],
+        ].filter(directory => !wechatStoreAdmin || wechatSubPackages.has(directory)),
         dts: 'src/types/uni-pages.d.ts',
       }),
       // UniOptimization 插件需要 page.json 文件，故应在 UniPages 插件之后执行

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue'
-import PasswordForm from '@/pages-core/user/security/components/password-form.vue'
+import PasswordForm from '@/components/account-password-form/account-password-form.vue'
 import { useAccess } from '@/hooks/useAccess'
 import { LOGIN_PAGE } from '@/router/config'
 import { useTokenStore } from '@/store/token'
@@ -47,7 +47,7 @@ function confirmLogout() {
     <view class="shop-home__content">
       <view class="shop-home__brand">
         <image src="/static/brand/yuanyuan-logo.png" mode="aspectFit" class="shop-home__logo" />
-        <text class="shop-home__title">团团园园杂货铺</text>
+        <text class="shop-home__title">团团园园后台管理</text>
       </view>
       <view class="shop-home__entries">
         <button v-for="item in entries" :key="item.path" class="shop-home__entry" @click="openPage(item.path)">
