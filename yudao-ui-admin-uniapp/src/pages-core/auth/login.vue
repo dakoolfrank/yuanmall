@@ -2,7 +2,7 @@
   <view class="auth-container shop-login">
     <view class="shop-login__card">
       <view class="shop-login__brand">
-        <image class="shop-login__logo" src="/static/brand/tuantuanyuanyuan-logo.png" mode="aspectFit" />
+        <image class="shop-login__logo" src="/static/brand/yuanyuan-logo.png" mode="aspectFit" />
         <text class="shop-login__title">{{ title }}</text>
       </view>
       <view class="form-container">

@@ -108,7 +108,7 @@ const formData = ref<DeliveryPickUpStore>({
   id: undefined,
   name: '团团园园杂货铺自提点',
   phone: '',
-  logo: 'https://mall.nexrur.ai/static/brand/tuantuanyuanyuan-logo.png',
+  logo: 'https://mall.nexrur.ai/static/brand/yuanyuan-logo.png',
   areaId: undefined,
   detailAddress: '',
   openingTime: '',

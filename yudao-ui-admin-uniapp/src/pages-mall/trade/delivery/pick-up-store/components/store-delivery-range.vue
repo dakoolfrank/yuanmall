@@ -1,7 +1,7 @@
 <template>
-  <view v-if="hasAccessByCodes(['trade:config:query'])" class="store-delivery-settings mx-24rpx my-16rpx rounded-16rpx bg-white p-24rpx">
-    <view class="mb-16rpx text-32rpx font-semibold">
-      店铺配送范围
+  <view v-if="hasAccessByCodes(['trade:config:query'])" class="store-delivery-settings">
+    <view class="range-title">
+      配送设置
     </view>
     <view v-if="loading" class="text-26rpx text-gray-500">
       正在加载…
@@ -13,26 +13,44 @@
       </wd-button>
     </view>
     <template v-else>
-      <view class="mb-12rpx text-26rpx text-gray-500">
-        配送中心
+      <view class="range-row">
+        <text class="range-label">配送中心</text>
+        <button class="range-center" :disabled="!canSave || saving" @click="centerVisible = true">
+          <text>{{ centerName }}</text>
+          <wd-icon name="arrow-down" size="14px" />
+        </button>
       </view>
-      <wd-button plain block :disabled="!canSave || saving" @click="centerVisible = true">
-        {{ centerName }}
-      </wd-button>
       <wd-picker
         v-model="centerSelection" v-model:visible="centerVisible" title="选择配送中心"
         :columns="stores" value-key="id" label-key="name"
       />
-      <wd-input v-model="radiusKm" label="直线半径（公里）" type="digit" :disabled="!canSave || saving" />
-      <view class="my-16rpx text-26rpx text-[#778174]">
-        范围内免费配送，超出只能自提。按收货地址的地图位置判断。
+      <view class="range-row range-row--radius">
+        <label class="range-label" for="store-delivery-radius">配送半径</label>
+        <view class="range-radius">
+          <view class="range-distance">
+            <input
+              id="store-delivery-radius" v-model="radiusKm" class="range-input" type="digit"
+              aria-label="配送半径（公里）" :disabled="!canSave || saving"
+            >
+            <text>公里</text>
+          </view>
+          <text class="range-note">范围内免费配送，超出可自提</text>
+        </view>
+      </view>
+      <view v-if="canSave && !radiusValid" class="range-warning">
+        配送半径须在 0.001 至 100 公里之间。
       </view>
       <view v-if="!config?.enabled" class="mb-16rpx text-26rpx text-orange-600">
         当前配送中心未就绪，请选择已启用且已标记位置的自提点。
       </view>
-      <wd-button v-if="canSave" size="small" :loading="saving" :disabled="saving" @click="save">
-        保存配送范围
-      </wd-button>
+      <view v-if="canSave" class="range-actions">
+        <wd-button
+          size="small" :loading="saving" :disabled="!canSubmit"
+          :custom-style="canSubmit ? 'background: #2e644b;' : 'background: #e8eee8; color: #526258;'" @click="save"
+        >
+          保存
+        </wd-button>
+      </view>
     </template>
   </view>
 </template>
@@ -64,6 +82,11 @@ const centerSelection = computed({
   set: (values: (number | string)[]) => { centerId.value = values[0] == null ? undefined : Number(values[0]) },
 })
 const radiusKm = ref('5')
+const radiusMeters = computed(() => Math.round(Number(radiusKm.value) * 1000))
+const radiusValid = computed(() => radiusMeters.value >= 1 && radiusMeters.value <= 100000)
+const canSubmit = computed(() => canSave.value && !saving.value && !!centerId.value
+  && radiusValid.value
+  && (centerId.value !== config.value?.pickUpStoreId || radiusMeters.value !== (config.value?.radiusMeters ?? 5000)))
 
 async function load() {
   if (!hasAccessByCodes(['trade:config:query']))
@@ -84,16 +107,11 @@ async function load() {
 }
 
 async function save() {
-  if (saving.value || !canSave.value)
+  if (!canSubmit.value || !centerId.value)
     return
-  const radiusMeters = Math.round(Number(radiusKm.value) * 1000)
-  if (!centerId.value || !Number.isFinite(radiusMeters) || radiusMeters < 1 || radiusMeters > 100000) {
-    toast.warning('请选择配送中心，半径需大于0且不超过100公里')
-    return
-  }
   saving.value = true
   try {
-    await saveStoreDeliveryRange({ pickUpStoreId: centerId.value, radiusMeters })
+    await saveStoreDeliveryRange({ pickUpStoreId: centerId.value, radiusMeters: radiusMeters.value })
     toast.success('配送范围已保存')
     await load()
   } finally {
@@ -103,3 +121,115 @@ async function save() {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.store-delivery-settings {
+  padding: 18px 20px;
+  border: 1px solid #e3e9e3;
+  border-radius: 14px;
+  background: #fff;
+  color: #26382e;
+}
+
+.range-title {
+  margin-bottom: 14px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.range-row {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.range-label {
+  color: #526258;
+}
+
+.range-center {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  max-width: 360px;
+  min-height: 42px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid #d6e0d8;
+  border-radius: 8px;
+  background: #fafbf9;
+  color: #26382e;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.range-center::after {
+  border: 0;
+}
+
+.range-center:disabled {
+  color: #526258;
+}
+
+.range-radius,
+.range-distance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.range-radius {
+  flex-wrap: wrap;
+  column-gap: 14px;
+}
+
+.range-input {
+  box-sizing: border-box;
+  width: 68px;
+  height: 40px;
+  padding: 0 9px;
+  border: 1px solid #d6e0d8;
+  border-radius: 8px;
+  background: #fafbf9;
+  text-align: center;
+}
+
+.range-note {
+  color: #657368;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.range-warning {
+  margin-top: 8px;
+  color: #a3422e;
+  font-size: 13px;
+}
+
+.range-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+@media (max-width: 480px) {
+  .store-delivery-settings {
+    padding: 14px;
+  }
+
+  .range-row {
+    grid-template-columns: 60px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .range-row--radius {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+</style>

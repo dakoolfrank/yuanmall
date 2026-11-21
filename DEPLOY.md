@@ -249,3 +249,9 @@ Admin“设置”新增店铺配送范围卡片，可选择已启用自提点、
 回退Java时保留新列、后续真实地址定位及配送配置，不恢复旧订单/库存快照。旧JAR没有配送范围校验，恢复前须与顾客端对齐或暂停接收新配送订单。
 
 Admin 三个修改文件 ESLint 通过。浏览器使用拦截的虚拟管理接口验收配送中心回显、5公里默认值、保存按整数米提交、0半径拒绝、保存权限撤销及375px手机无横向溢出；真实配送配置未被界面测试改动。报告 `_local/serverdev/store-range-ui-verification.json`，截图在本机 `/home/ubuntu/.cache/yuanmall-preview/store-range-desktop.png`、`store-range-mobile.png`。
+
+## 2026-11-21 Logo命名统一
+
+当前唯一品牌图为 `yudao-ui-admin-uniapp/src/static/brand/yuanyuan-logo.png`，公网 `/static/brand/yuanyuan-logo.png`。由 `yaanyaan-logo.png` 原样改名，重复的 `tuantuanyuanyuan-logo.png` 已移除；首页、登录相关组件、favicon和自提点默认地址已切换。当前开发库租户1正式自提点5的已保存LogoURL同步更新，仅改变Logo及更新时间，未修改联系方式、坐标或营业设置。
+
+公网新PNG字节校验、首页favicon和自提列表API验证通过；源站不再提供旧PNG，但Cloudflare可能保留旧URL的4小时缓存。新页面引用新路径，无需重启Java/Nginx或修改Tunnel。私有记录 `_local/serverdev/logo-rename-20261121.json` 含定向门店快照备份目录；未改生产库，未提交推送Git。

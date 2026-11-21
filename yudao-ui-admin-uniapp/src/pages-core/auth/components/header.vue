@@ -1,6 +1,6 @@
 <template>
   <view class="header flex flex-col items-center pb-60rpx pt-120rpx">
-    <wd-img class="mb-24rpx" src="/static/brand/tuantuanyuanyuan-logo.png" width="160rpx" height="160rpx" mode="aspectFit" />
+    <wd-img class="mb-24rpx" src="/static/brand/yuanyuan-logo.png" width="160rpx" height="160rpx" mode="aspectFit" />
     <view class="text-44rpx text-[#1890ff] font-bold">
       {{ title }}
     </view>

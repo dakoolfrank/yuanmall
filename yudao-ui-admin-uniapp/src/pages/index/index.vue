@@ -46,7 +46,7 @@ function confirmLogout() {
   <view class="shop-home">
     <view class="shop-home__content">
       <view class="shop-home__brand">
-        <image src="/static/brand/tuantuanyuanyuan-logo.png" mode="aspectFit" class="shop-home__logo" />
+        <image src="/static/brand/yuanyuan-logo.png" mode="aspectFit" class="shop-home__logo" />
         <text class="shop-home__title">团团园园杂货铺</text>
       </view>
       <view class="shop-home__entries">

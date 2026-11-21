@@ -385,3 +385,9 @@ Admin继续HMR。保存模拟、权限、边界输入及手机布局已验收，
 ## 2026-11-20 分类状态展示精简
 
 分类列表和详情隐藏常驻的“开启”状态，仅停用分类显示“停用”提示。保留分类名称、排序、查看商品、编辑及删除；编辑页仍可维护实际状态，不修改分类数据或顾客端过滤规则。两个Vue文件ESLint及Vite编译检查通过，HMR生效，无Java重启或数据库操作。
+
+## 2026-11-21 Logo文件统一命名
+
+按用户要求，将原图 `yaanyaan-logo.png` 重命名为 `src/static/brand/yuanyuan-logo.png`，移除重复的 `tuantuanyuanyuan-logo.png`；图片字节不变。首页、登录页、登录公共头部、浏览器图标及新增自提点默认Logo均引用新文件。正式自提点5已保存的Logo地址同步到新URL，其他门店字段不变。
+
+四个Vue文件ESLint、Vite编译及公网新图片校验通过，HMR生效，无Java或Nginx重启。旧源文件已删除，Cloudflare仍可能短时缓存旧URL，当前页面使用新URL；此前Logo文件名说明作为历史记录保留。
