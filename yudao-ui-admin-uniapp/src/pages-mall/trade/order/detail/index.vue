@@ -26,6 +26,7 @@
           <view class="order-meta">
             <text>{{ formData.no || '-' }}</text>
             <text>{{ formatBeijingDateTime(formData.createTime) }}</text>
+            <text v-if="formData.payOrderId">支付单号 {{ formData.payOrderId }}</text>
           </view>
         </view>
 
@@ -58,6 +59,12 @@
           </view>
           <text v-if="formData.deliveryType === DeliveryTypeEnum.PICK_UP" class="order-address">{{ pickUpStoreName || '自提门店信息待确认' }}</text>
           <text v-else-if="receiverAddress" class="order-address">{{ receiverAddress }}</text>
+          <text v-if="formData.pickUpVerifyCode && formData.status === TradeOrderStatusEnum.UNDELIVERED" class="order-address order-muted">核销码 {{ formData.pickUpVerifyCode }}</text>
+          <text v-if="formData.logisticsNo" class="order-address order-muted">物流单号 {{ formData.logisticsNo }}</text>
+          <view v-if="expressTracks.length" class="order-tracks">
+            <text>物流轨迹</text>
+            <text v-for="(item, index) in expressTracks" :key="index" class="order-muted">{{ item.time || item.createTime || '' }} {{ item.content || item.context || '' }}</text>
+          </view>
         </view>
 
         <view v-if="formData.userRemark?.trim() || formData.remark?.trim()" class="order-card order-notes">
@@ -69,41 +76,18 @@
           </view>
         </view>
 
-        <view class="order-card order-records">
+        <view v-if="orderTimeline.length" class="order-card order-records">
           <view class="order-record-toggle" role="button" tabindex="0" :aria-expanded="recordsExpanded" @click="recordsExpanded = !recordsExpanded" @keydown.enter="recordsExpanded = !recordsExpanded" @keydown.space.prevent="recordsExpanded = !recordsExpanded">
             <text>操作记录</text>
             <text class="order-muted">{{ recordsExpanded ? '收起 −' : '展开 +' }}</text>
           </view>
           <view v-if="recordsExpanded" class="order-record-content">
-            <view v-if="formData.receiptTime" class="order-record-entry">
-              <text class="order-record-title">线下付款登记</text>
-              <text>{{ formData.receiptMethod === 'cash' ? '现金' : '现场扫码' }} · {{ formatDisplayMoney(formData.receiptAmount) }}</text>
-              <text class="order-muted">{{ formatBeijingDateTime(formData.receiptTime) }}<text v-if="formData.receiptOperatorId != null"> · 管理员 {{ formData.receiptOperatorId }}</text></text>
-            </view>
-            <view v-if="formData.offlineRefundTime" class="order-record-entry">
-              <text class="order-record-title">线下退款登记</text>
-              <text>{{ formData.offlineRefundMethod === 'cash' ? '现金退回' : '微信转回' }} · {{ formatDisplayMoney(formData.offlineRefundAmount) }}</text>
-              <text class="order-muted">{{ formatBeijingDateTime(formData.offlineRefundTime) }}<text v-if="formData.offlineRefundOperatorId != null"> · 管理员 {{ formData.offlineRefundOperatorId }}</text></text>
-            </view>
-            <view v-if="formData.user?.nickname || formData.payOrderId || formData.terminal != null || formData.type != null" class="order-record-entry order-muted">
-              <text v-if="formData.user?.nickname">买家：{{ formData.user.nickname }}</text>
-              <text v-if="formData.terminal != null">来源：{{ getDictLabel(DICT_TYPE.TERMINAL, formData.terminal) || '未指定' }}</text>
-              <text v-if="formData.type != null">类型：{{ getDictLabel(DICT_TYPE.TRADE_ORDER_TYPE, formData.type) || (formData.type === 0 ? '普通订单' : '其他订单') }}</text>
-              <text v-if="formData.payOrderId">支付单号：{{ formData.payOrderId }}</text>
-            </view>
-            <view v-if="formData.deliveryTime || formData.receiveTime || formData.cancelTime || (formData.pickUpVerifyCode && formData.status === TradeOrderStatusEnum.UNDELIVERED) || formData.logisticsNo" class="order-record-entry order-muted">
-              <text v-if="formData.deliveryTime">{{ formData.deliveryType === DeliveryTypeEnum.STORE ? '开始配送' : '发货' }}：{{ formatBeijingDateTime(formData.deliveryTime) }}</text>
-              <text v-if="formData.receiveTime">{{ formData.deliveryType === DeliveryTypeEnum.PICK_UP ? '取货' : '送达' }}：{{ formatBeijingDateTime(formData.receiveTime) }}</text>
-              <text v-if="formData.cancelTime">取消：{{ formatBeijingDateTime(formData.cancelTime) }}</text>
-              <text v-if="formData.pickUpVerifyCode && formData.status === TradeOrderStatusEnum.UNDELIVERED">核销码：{{ formData.pickUpVerifyCode }}</text>
-              <text v-if="formData.logisticsNo">物流单号：{{ formData.logisticsNo }}</text>
-            </view>
-            <view v-if="expressTracks.length" class="order-record-entry">
-              <text class="order-record-title">物流轨迹</text>
-              <text v-for="(item, index) in expressTracks" :key="index" class="order-muted">{{ item.time || item.createTime || '' }} {{ item.content || item.context || '' }}</text>
-            </view>
-            <view v-if="formData.logs?.length" class="order-record-entry">
-              <text v-for="(log, index) in formData.logs" :key="index" class="order-log"><text class="order-muted">{{ formatBeijingDateTime(log.createTime) }}</text> {{ log.content || '-' }}</text>
+            <view v-for="(entry, index) in orderTimeline" :key="index" class="order-record-entry">
+              <text v-if="entry.time" class="order-muted order-record-time">{{ entry.time }}</text>
+              <view class="order-record-action">
+                <text>{{ entry.label }}</text>
+                <text v-if="entry.detail" class="order-muted">{{ entry.detail }}</text>
+              </view>
             </view>
           </view>
         </view>
@@ -351,6 +335,7 @@ import { navigateBackPlus } from '@/utils'
 import { DeliveryTypeEnum, DICT_TYPE, TradeOrderStatusEnum } from '@/utils/constants'
 import { formatBeijingDateTime } from '@/utils/date'
 import { canMarkOfflineOrderPaid, canMarkOfflineOrderRefunded, orderPaymentDescription } from '@/utils/offlinePayment'
+import { buildOrderTimeline } from '@/utils/orderTimeline'
 
 const props = defineProps<{ id?: number | any, markPaid?: string | number }>()
 
@@ -372,10 +357,11 @@ const areaTree = ref<any[]>([]) // 地区树（修改地址用）
 const submitting = ref(false) // 动作提交状态
 
 const recordsExpanded = ref(false)
+const orderTimeline = computed(() => formData.value ? buildOrderTimeline(formData.value) : [])
 const refundedAmount = computed(() => formData.value?.offlineRefundAmount ?? formData.value?.refundPrice ?? 0)
 const receiverAddress = computed(() => [formData.value?.receiverAreaName, formData.value?.receiverDetailAddress].filter(Boolean).join(' ').trim())
 const deliveryLabel = computed(() => ({ 1: '快递配送', 2: '到店自提', 3: '店铺配送' } as Record<number, string>)[formData.value?.deliveryType ?? 0] || '收货信息')
-const hasFulfillmentInfo = computed(() => formData.value?.deliveryType === DeliveryTypeEnum.PICK_UP || !!(formData.value?.receiverName || formData.value?.receiverMobile || receiverAddress.value))
+const hasFulfillmentInfo = computed(() => formData.value?.deliveryType === DeliveryTypeEnum.PICK_UP || !!(formData.value?.receiverName || formData.value?.receiverMobile || receiverAddress.value || formData.value?.logisticsNo || expressTracks.value.length))
 const fulfillmentProgress = computed(() => {
   const order = formData.value
   if (order?.status === TradeOrderStatusEnum.UNDELIVERED)
@@ -798,6 +784,11 @@ onMounted(async () => {
   margin-top: 6px;
   overflow-wrap: anywhere;
 }
+.order-tracks {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+}
 .order-notes {
   display: flex;
   flex-direction: column;
@@ -826,21 +817,25 @@ onMounted(async () => {
   overflow-wrap: anywhere;
 }
 .order-record-entry {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 0;
+  display: grid;
+  grid-template-columns: 145px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 8px 0;
+  font-size: 14px;
 }
 .order-record-entry + .order-record-entry {
   border-top: 1px solid #edf0eb;
 }
-.order-record-title {
-  font-weight: 500;
+.order-record-time {
+  font-variant-numeric: tabular-nums;
 }
-.order-log {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 13px;
+.order-record-action {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
 }
 @media (max-width: 600px) {
   .order-detail-content {
@@ -860,6 +855,12 @@ onMounted(async () => {
   .order-money-line {
     gap: 4px 14px;
     font-size: 13px;
+  }
+  .order-record-entry {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .order-record-action {
+    grid-column: 1;
   }
 }
 .store-actions {
